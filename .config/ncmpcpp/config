@@ -1,0 +1,3 @@
+# vim: ft=conf
+visualizer_type = "spectrum"
+external_editor = nvim

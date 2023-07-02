@@ -1,0 +1,141 @@
+# Basic vars
+set shellopts '-eu'
+set ifs "\n"
+set scrolloff 10
+#set icons "$LF_ICONS"
+set period 1
+# set cleaner '~/.config/lf/cleaner'
+# set previewer '~/.config/lf/scope'
+set previewer ctpv
+set cleaner ctpvclear
+&ctpv -s $id
+&ctpvquit $id
+set shell "/usr/bin/zsh"
+set incfilter true
+
+# cmds/functions
+# cmd open ${{
+#     case $(file --mime-type "$(readlink -f $f)" -b) in
+# 	application/vnd.openxmlformats-officedocument.spreadsheetml.sheet) localc $fx ;;
+# 	image/vnd.djvu|application/pdf|application/octet-stream|application/postscript) setsid -f zathura $fx >/dev/null 2>&1 ;;
+#         text/*|application/json|inode/x-empty) $EDITOR $fx;;
+# 	image/x-xcf) setsid -f gimp $f >/dev/null 2>&1 ;;
+# 	image/svg+xml) display -- $f ;;
+# 	image/*) rotdir $f | grep -i "\.\(png\|jpg\|jpeg\|gif\|webp\|avif\|tif\|ico\)\(_large\)*$" |
+# 		setsid -f sxiv -aio 2>/dev/null | while read -r file; do
+# 			[ -z "$file" ] && continue
+# 			lf -remote "send select \"$file\""
+# 			lf -remote "send toggle"
+# 		done &
+# 		;;
+# 	audio/*) mpv --audio-display=no $f ;;
+# 	video/*) setsid -f mpv $f -quiet >/dev/null 2>&1 ;;
+# 	application/pdf|application/vnd*|application/epub*) setsid -f zathura $fx >/dev/null 2>&1 ;;
+# 	application/pgp-encrypted) $EDITOR $fx ;;
+#         *) for f in $fx; do setsid -f $OPENER $f >/dev/null 2>&1; done;;
+#     esac
+# }}
+#
+# cmd mkdir $mkdir -p "$(echo $* | tr ' ' '\ ')"
+#
+# cmd extract.old ${{
+# 	clear; tput cup $(($(tput lines)/3)); tput bold
+# 	set -f
+# 	printf "%s\n\t" "$fx"
+# 	printf "extract?[y/N]"
+# 	read ans
+# 	[ $ans = "y" ] && aunpack $fx
+# }}
+
+# cmd moveto ${{
+# 	clear; tput cup $(($(tput lines)/3)); tput bold
+# 	set -f
+# 	clear; echo "Move to where?"
+# 	dest="$(sed -e 's/\s*#.*//' -e '/^$/d' -e 's/^\S*\s*//' ${XDG_CONFIG_HOME:-$HOME/.config}/shell/bm-dirs | fzf | sed 's|~|$HOME|')" &&
+# 	for x in $fx; do
+# 		eval mv -iv \"$x\" \"$dest\"
+# 	done &&
+# 	notify-send "🚚 File(s) moved." "File(s) moved to $dest."
+# }}
+#
+# cmd copyto ${{
+# 	clear; tput cup $(($(tput lines)/3)); tput bold
+# 	set -f
+# 	clear; echo "Copy to where?"
+# 	dest="$(sed -e 's/\s*#.*//' -e '/^$/d' -e 's/^\S*\s*//' ${XDG_CONFIG_HOME:-$HOME/.config}/shell/bm-dirs | fzf | sed 's|~|$HOME|')" &&
+# 	for x in $fx; do
+# 		eval cp -ivr \"$x\" \"$dest\"
+# 	done &&
+# 	notify-send "📋 File(s) copied." "File(s) copies to $dest."
+# }}
+#
+cmd bulkrename $vidir
+
+cmd videomusic &{{
+	cover="$(mktemp -u tmp.XXXX.png)"
+	if ! ffmpeg -i "$f" "$cover"; then
+		if ! cover="$(echo "$(dirname "$f")"/cover.* )" ; then
+			cover=$HOME/download/assets/speaker-orange.png
+		fi
+		else
+			tmp=true
+	fi
+		
+	ffmpeg -loop 1 -i "${cover}" -i "$f" -vf "crop=trunc(iw/2)*2:trunc(ih/2)*2" -c:v libx264 -r 5 -pix_fmt yuv420p -tune stillimage -crf 30 -c:a aac -b:a 530k -ar 48000 -shortest "${1-$(echo $f | sed 's/\(.*\)\..*/\1/')}".mp4
+	[ $tmp ] && rm "$cover"
+	notify-send -t 3000 "Done converting"
+}}
+
+cmd penguinmusic ${{
+	ffmpeg -ignore_loop 0 -i ~/download/assets/penguin.gif -i $f -c:v libx264 -r 50 -pix_fmt yuv420p -c:a aac -b:a 530k -ar 48000 -shortest ${1-penguin}.mp4
+}}
+cmd catmusic ${{
+	ffmpeg -ignore_loop 0 -i ~/download/assets/cat.gif -i $f -c:v libx264 -r 50 -pix_fmt yuv420p -c:a aac -b:a 530k -ar 48000 -shortest ${1-cat}.mp4
+}}
+
+ cmd extract %{{
+	n=$(echo $fx | wc -l)
+	[ $n -eq 1 ] && printf "extract '$fx' ? [y/N] " || printf "extract $n items? [y/N] "
+ 	read ans
+ 	[ $ans = "y" ] && echo $fx | while read file; do aunpack $file; done && printf "Extracted"
+ }}
+
+
+# Bindings
+map ss :set sortby size; set info size; set reverse
+map st :set sortby time; set info time; set reverse
+map sa :set sortby atime; set info atime; set reverse
+map sc :set sortby ctime; set info ctime; set reverse
+map sn :set sortby natural; set info; set reverse; set reverse!
+map <a-F> :filter
+# map <a-F> :setfilter
+# map <c-f> $lf -remote "send $id select \"$(fzf)\""
+# map J $lf -remote "send $id cd $(sed -e 's/\s*#.*//' -e '/^$/d' -e 's/^\S*\s*//' ${XDG_CONFIG_HOME:-$HOME/.config}/shell/bm-dirs | fzf)"
+map D delete
+map E extract
+# map C copyto
+# map M moveto
+map <c-n> push :mkdir<space>
+# map <c-s> set hidden!
+map <enter> shell
+map x $$f
+map X !$f
+map o %echo $fx | sed "s/^/file:\/\//g" | tr '\n' '\0' | xargs -0 mpc add && echo "added musicallies"
+# map o &mimeopen $f
+# map O $mimeopen --ask $f
+#
+map U clear
+
+map A rename # at the very end
+map c push A<c-u> # new rename
+map I push A<c-a> # at the very beginning
+map i push A<a-b><a-b><a-f> # before extension
+map a push A<a-b> # after extension
+map B bulkrename
+
+# map V push :!nvim<space>
+
+map Y %printf "%s" "$fx" | xclip -selection clipboard
+
+# Source Bookmarks
+#source "~/.config/lf/shortcutrc"

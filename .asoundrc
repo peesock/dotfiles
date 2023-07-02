@@ -1,0 +1,274 @@
+pcm.!default { # changes the pcm device in use by looking for an environment variable set to that device. if ALSAPCM=voicechat, then the process using that variable will also use pcm.voicechat. this allows you to change what device you use for applications that only care about the default (almost all of them).
+	type plug
+		slave.pcm {
+			@func getenv
+				vars [ ALSAPCM ]
+				default "desktop"
+		}
+}
+pcm.desktop { # asym device, sets up capture and playback into one package
+	type asym
+		playback.pcm "globalrouter"
+		capture.pcm "desktopsnooper"
+		hint {
+			show on
+				description "for loopback playback and capture."
+		}
+}
+pcm.voicechat {
+	type asym
+		playback.pcm "globalrouter"
+		capture.pcm "micsnooper"
+		hint {
+			show on
+				description "for loopback playback and mic capture."
+		}
+}
+pcm.everything {
+	type asym
+	playback.pcm "globalrouter"
+	capture.pcm "capturemulti"
+}
+ctl.everything {
+	type hw
+	card PCH
+}
+
+pcm.capturemulti {
+	type multi
+	slaves.a.pcm "desktopsnooper"
+	slaves.a.channels 2
+	slaves.b.pcm "micsnooper"
+	slaves.b.channels 2
+	bindings.0 { slave a; channel 0; }
+	bindings.1 { slave a; channel 1; }
+	bindings.2 { slave b; channel 0; }
+	bindings.3 { slave b; channel 1; }
+}
+
+pcm.globalrouter { # takes input from the 4 channel pcm.globalquader, and routes the 4 channels into 2 channels for stereo playback. column #1 = globalrouter.pcm channel number, #2 = slave (pcm.globalquader) channel number, #3 = volume %.
+	type route;
+	slave.pcm "globalquader"
+	# slave.channels 4
+	ttable.0.0 1;
+	ttable.1.1 1;
+	ttable.0.2 1;
+	ttable.1.3 1;
+}
+pcm.globalquader { # creates a multi device called globalquader that has 4 channels instead of 2. the first 2 channels use desktop audio (loopback in my case), and the other two use the speaker (hw:PCH in my case).
+	type multi
+		slaves.a.pcm "desktopmixer"
+		slaves.a.channels 2
+# slaves.b.pcm "speakermixer"
+		slaves.b.pcm "globalfifo"
+		slaves.b.channels 2
+		bindings.0 { slave a; channel 0; }
+		bindings.1 { slave a; channel 1; }
+		bindings.2 { slave b; channel 0; }
+		bindings.3 { slave b; channel 1; }
+}
+
+pcm.globalfifo {
+	type file               # File PCM
+		slave.pcm {
+			type route;
+			slave.pcm "globalsoftvol"
+				ttable.0.0 1;
+				ttable.1.1 1;
+		}
+	file "|/home/apoc/docs/code/c/safe_fifo /tmp/alsa.fifo"
+		format raw              # File format ("raw" or "wav")
+		perm 0666               # Output file permission (octal, def. 0600)
+}
+
+pcm.globalsoftvol { # softvol lets you add a software volume control to anything. maximum loudness is always dependent on hardware volume.
+	type softvol
+		slave {
+			pcm globalmute
+		}
+	control {
+		name "Global"
+			card Loopback
+	}
+}
+
+pcm.globalmute { # since softvol alone doesn't support it somehow
+	type softvol
+		slave {
+			pcm speakermixer
+		}
+	control {
+		name "GlobalMute"
+			card Loopback
+	}
+	resolution 2
+}
+
+pcm.speakermixer { # dmixer for my sound card, hw:PCH. does the same as desktopmixer, but affects the hardware sound output.
+	type dmix
+		ipc_key 1112
+		slave {
+			pcm "hw:PCH,0"
+				rate 48000
+				format S16_LE
+				channels 2
+				period_size 1024
+				buffer_size 8192
+		}
+}
+
+# hw:Loopback,[0 = capture, 1 = playback],[subdevice 0-7]
+pcm.desktopmixer { # dmixer for the loopback device. essentially mixes all playback streams going into the loopback together into this sub-device.
+	type dmix
+		ipc_key 1111
+		slave {
+			pcm "hw:Loopback,0,0"
+				rate 48000
+				format S16_LE
+				channels 2
+				period_size 1024
+				buffer_size 8192
+		}
+}
+
+pcm.desktopsnooper { # dnsooper for the loopback. similar to dmixer, it allows multiple clients to capture sound from the same card input (microphone), so you can record your voice while calling your friends.
+	type dsnoop
+		ipc_key 2222
+		slave {
+			pcm "hw:Loopback,1,0"
+				rate 48000
+				format S16_LE
+				channels 2
+				period_size 1024
+				buffer_size 8192
+		}
+}
+
+# web mic setup, uses dsnoop
+pcm.micsnooper{
+	type dsnoop
+		ipc_key 2223
+		slave {
+			pcm "hw:BRIO"
+				rate 48000
+				format S16_LE
+				channels 1
+				period_size 1024
+				buffer_size 8192
+		}
+}
+
+pcm.mpd {
+	type asym
+		playback.pcm "pcm.mpdrouter"
+		capture.pcm "pcm.mpdsnooper"
+		hint {
+			show on
+				description "for playing from and recording MPD."
+		}
+}
+
+pcm.mpdrouter {
+	type route;
+	slave.pcm "mpdquader";
+	ttable.0.0 1;
+	ttable.1.1 1;
+	ttable.0.2 1;
+	ttable.1.3 1;
+}
+pcm.mpdquader {
+	type multi
+		slaves.a.pcm "mpdmixer"
+		slaves.a.channels 2
+		# slaves.b.pcm "mpdfifo"
+		slaves.b.pcm "mpdsoftvol"
+		slaves.b.channels 2
+		bindings.0 { slave a; channel 0; }
+	bindings.1 { slave a; channel 1; }
+	bindings.2 { slave b; channel 0; }
+	bindings.3 { slave b; channel 1; }
+}
+
+pcm.mpdfifo {
+	type file
+		slave.pcm {
+			type route
+				slave.pcm "mpdsoftvol"
+				ttable.0.0 1;
+				ttable.1.1 1;
+		}
+	file "| /home/apoc/docs/code/c/safe_fifo /tmp/mpd.fifo"
+		format raw              # File format ("raw" or "wav")
+		perm 0666               # Output file permission (octal, def. 0600)
+}
+
+pcm.mpdsoftvol {
+	type softvol
+		slave {
+			pcm speakermixer
+		}
+	control {
+		name "MPD"
+			card Loopback
+	}
+}
+
+pcm.mpdmixer {
+	type dmix 
+		ipc_key 1113
+		slave {
+			pcm "hw:Loopback,0,1"
+				rate 48000
+				format S16_LE
+				channels 2 
+				period_size 1024
+				buffer_size 8192
+		}
+}
+pcm.mpdsnooper {
+	type dsnoop 
+		ipc_key 2224
+		slave {
+			pcm "hw:Loopback,1,1"
+				format S16_LE
+				channels 2 
+				period_size 1024 
+				buffer_size 8192
+		}
+}
+
+pcm.jackmulti { # adds additional hardware that jack can use all at once
+	type multi
+		slaves.a.pcm "hw:PCH,0"
+		slaves.a.channels 2
+# slaves.b.pcm "speakermixer"
+		slaves.b.pcm "hw:BRIO"
+		slaves.b.channels 2
+		bindings.0 { slave a; channel 0; }
+		bindings.1 { slave a; channel 1; }
+		bindings.2 { slave b; channel 0; }
+		bindings.3 { slave b; channel 1; }
+}
+
+pcm.jackdesktop { # like pcm.desktop but for jack
+	type asym
+		playback.pcm "hw:PCH,0"
+		capture.pcm "hw:BRIO"
+}
+
+pcm.jack {
+	type jack
+		playback_ports {
+			0 system:playback_1
+			1 system:playback_2
+		}
+		capture_ports {
+			0 system:capture_1
+			1 system:capture_2
+		}
+}
+
+ctl.mixer0 {
+	type hw
+		card 0
+}

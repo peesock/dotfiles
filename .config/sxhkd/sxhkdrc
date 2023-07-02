@@ -1,0 +1,165 @@
+# Window Manipulation
+
+# force close window
+super + ctrl + q
+	xdotool getactivewindow windowkill
+# Basic Applications
+
+# open terminal
+super + Return
+	$TERMINAL
+
+# open lf
+super + alt + f
+	$TERMINAL --title lf -e sh -c "lf;$SHELL"
+
+# open neovim
+super + a; t
+	$TERMINAL --title nvim -e sh -c "nvim;$SHELL"
+
+# open default browser
+super + a; w
+	ALSAPCM=voicechat $BROWSER
+# open secondary browser
+super + a; c
+	chromium #ungoogled of course
+# open mail
+super + a; m
+	$TERMINAL --title neomutt -e sh -c "neomutt;$SHELL"
+# open rawtherapee, gimp
+super + a; {r,g}
+	{rawtherapee,\
+	gimp}
+# open gamer mode
+super + a; l
+	lutris
+# open virt-manager, hacker mode
+super + a; v
+	virt-manager
+# open keepassXC
+super + a; p
+	keepassxc
+# open element
+super + a; e
+	ALSAPCM=voicechat element-desktop --disable-smooth-scrolling
+# open gparted (root)
+super + a; d
+	sudo gparted
+
+super + a; n
+	nm-connection-editor
+
+# open terminal popup
+super + alt + Return
+	wid=$(maptoggle "popup terminal" "$TERMINAL" -echo); [ -n $wid ] && (awesome-client "local c = nil ; for _, c2 in ipairs(client.get()) do ; if c2.window == $wid then ; c = c2 ; break ; end ; end ; if not c then return end ; c.floating = true" ; xdotool windowmove $wid 25% 25% ; xdotool windowsize $wid 50% 50%); unset wid
+
+# music playah popup
+super + alt + p
+	wid=$(maptoggle "musically" "$TERMINAL -e ncmpcpp" -echo); [ -n $wid ] && (awesome-client "local c = nil ; for _, c2 in ipairs(client.get()) do ; if c2.window == $wid then ; c = c2 ; break ; end ; end ; if not c then return end ; c.floating = true" ; xdotool windowmove $wid 25% 25% ; xdotool windowsize $wid 50% 50%); unset wid
+
+# calculator popup
+super + alt + m
+	wid=$(maptoggle "qalcwise" "$TERMINAL -o font_size=12 -e qalc" -echo); [ -n $wid ] && (awesome-client "local c = nil ; for _, c2 in ipairs(client.get()) do ; if c2.window == $wid then ; c = c2 ; break ; end ; end ; if not c then return end ; c.floating = true" ; xdotool windowmove $wid 25% 25% ; xdotool windowsize $wid 50% 50%); unset wid
+
+# Basic Utilities
+
+# open dmenu
+super + d
+	dmenu_run_history
+
+super + p
+	if pgrep -x "keepassxc"; then keepmenu; else keepassxc; fi
+
+super + ctrl + p
+	killall keepassxc && notify-send -t 1000 "Killed keepassxc" || notify-send -t 1000 "kpxc error" ;\
+	killall keepmenu && notify-send -t 1000 "Killed keepmenu" || notify-send -t 1000 "kpmu error"
+
+# open dmenu with voicechat alsa config
+super + shift + d
+	ALSAPCM=voicechat dmenu_run_history
+
+# open dmenu with root
+super + ctrl + d
+	sudo dmenu_run_history
+
+# kill an X client
+super + Escape
+	xkill
+
+# screenshot full
+super + {_, alt} + s
+	screenshot {temp, _}
+# screenshot crop
+super + {_, alt} + shift + s
+	screenshot {temp, _} crop
+# screenshot edit
+super + {_, alt} + ctrl + s
+	screenshot {temp, _} edit
+
+# lock screen
+super + shift + ctrl + l
+	apock
+# logout
+super + shift + ctrl + q
+	pkill -u $USER
+
+# Expanded Utilities
+
+super + u; {o,s,p,c}
+	{ocrgrab text,\
+	servtoggle.sh 'screenkey --opacity 0.4',\
+	servtoggle.sh pipewire pipewire-pulse wireplumber pasystray,\
+	servtoggle.sh picom}
+
+
+# Media Keys
+# raise audio +2%
+{super + ctrl + bracketright, super + bracketright, super + alt + bracketright}
+	amixer -q -M -D {'hw:PCH' sset 'Master' 2%+; volnotify.sh Master hw:PCH, 'hw:Loopback' sset 'Global' 2%+; volnotify.sh Global, 'hw:Loopback' sset 'MPD' 2%+; volnotify.sh MPD}
+
+# lower volume -2%
+{super + ctrl + bracketleft, super + bracketleft, super + alt + bracketleft}
+	amixer -q -M -D {'hw:PCH' sset 'Master' 2%-; volnotify.sh Master hw:PCH, 'hw:Loopback' sset 'Global' 2%-; volnotify.sh Global, 'hw:Loopback' sset 'MPD' 2%-; volnotify.sh MPD}
+
+# toggle mute
+super + ctrl + backslash
+	amixer -D 'hw:PCH' -q sset 'Master' toggle && notify-send -r 13 -u low -t 1000 "Master:" \
+		"$(amixer -D 'hw:PCH' sget 'Master' | sed 5q | grep -q '\[on\]' && printf "on" || printf "off")"
+super + backslash
+	amixer -D 'hw:Loopback' -q sset 'GlobalMute' toggle && notify-send -r 13 -u low -t 1000 "Global:" \
+		"$(amixer -D 'hw:Loopback' sget 'GlobalMute' | sed 5q | grep -q '\[on\]' && printf "on" || printf "off")"
+	# softmute 'Global' 'hw:Loopback'
+# toggle MPD
+super + alt + backslash
+	mpc toggle; notify-send -r 13 -u low -t 1000 "MPD:" "$(mpc status %state%)"
+
+#screen and webcam and audio record bindings
+super + F12
+	record menu
+super + ctrl + F12
+	record menukill
+super + ctrl + shift + F12
+	record kill all
+super + F1
+	record screen
+super + shift + F1
+	record screen crop
+super + ctrl + F1
+	record kill screen
+super + F2
+	record wcam
+super + ctrl + F2
+	record kill wcam
+super + F4
+	record clipper #note: clip by running twice. can only be killed by below command
+super + ctrl + F4
+	record kill clipper
+
+#Epic.
+#toggle oneko
+super + alt + n
+	if killall -s 0 oneko; then ;\
+		killall oneko ;\
+	else ;\
+		oneko -fixrootcursor & ;\
+	fi

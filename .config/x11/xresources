@@ -1,0 +1,7 @@
+Nsxiv.window.background: #000000
+Nsxiv.window.foreground: #FFFFFF
+
+
+
+	XTerm*foreground: rgb:ff/ff/ff
+	XTerm*background: rgb:1f/1f/28

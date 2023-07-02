@@ -1,0 +1,67 @@
+#!/bin/sh
+
+# aliases
+
+# sudo not required for some system commands
+for command in mount umount sv pacman updatedb su shutdown poweroff reboot ; do
+	alias $command="sudo $command"
+done; unset command
+
+se() {
+	pwd="$(pwd)"
+	cd ~/.local/bin
+	file="$(fzf)" &&
+		$EDITOR "$file"
+	cd "$pwd"
+}
+
+# Verbosity and settings that you pretty much just always are going to want.
+alias \
+	cp="cp -iv" \
+	mv="mv -iv" \
+	rm="rm -vI" \
+	bc="bc -ql" \
+	mkd="mkdir -pv" \
+	yt="yt-dlp --embed-metadata -i" \
+	yta="yt -x -f bestaudio/best" \
+	ffmpeg="ffmpeg -hide_banner" \
+	ffprobe="ffprobe -hide_banner" \
+	winetricks="winetricks -q" \
+	xiv="nsxiv"
+
+# Colorize commands when possible.
+alias \
+	lsa="exa -al --color=always --group-directories-first --icons" \
+	laa="exa -a --color=always --group-directories-first --icons" \
+	ls="ls --color=auto"
+	grep="grep --color=auto" \
+	diff="diff --color=auto" \
+	ccat="highlight --out-format=ansi" \
+	ip="ip -color=auto"
+
+# These common commands are just too long! Abbreviate them.
+alias \
+	ka="killall" \
+	g="git" \
+	sdn="shutdown -h now" \
+	e='$EDITOR' \
+	P="pacman" \
+	p="paru" \
+	z="zathura"
+
+alias \
+	magit="nvim -c MagitOnly" \
+	start-nginx='sudo nginx -c $XDG_CONFIG_HOME/nginx/nginx.conf'
+
+	which rlwrap >/dev/null && alias \
+	dash="rlwrap dash" \
+	hexec="cat $HOME/.cache/zsh/history | fzf | sed -E 's/^[[:space:]]*[0-9]+//' | sh" \
+	pubdot='git --git-dir=$HOME/.local/share/apoc/git/dotfiles/public' \
+	prvdot='git --git-dir=$HOME/.local/share/apoc/git/dotfiles/private'
+
+gidots(){
+	printf "PUBLIC:\n"
+	pubdot "$@"
+	printf "\n\nPRIVATE:\n"
+	prvdot "$@"
+}
