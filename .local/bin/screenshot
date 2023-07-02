@@ -1,0 +1,71 @@
+#!/bin/sh
+
+fotoDir="$HOME/pics/screenshots" # default ss dir
+foto="$(date +%Y%m%d"-"%H%M%S"-""$(($(date +%N | sed "s/^0*//g; s/\.0*/./g") / 1000000))").png" # timestamping
+
+screenshot(){
+	shotgun -f png $select "$out"
+}
+out="$fotoDir/$foto"
+i=1
+until [ $i -gt $# ]; do
+	eval "arg="\$$i""
+	case $arg in
+		"-o")
+			i=$((i + 1))
+			eval "out="\$$i""
+			;;
+		"crop")
+			select="$(hacksaw -f "-i %i -g %g")" || exit 1
+			;;
+		"temp")
+			mkdir -p "/tmp/$USER/screenshot"
+			out="/tmp/$USER/screenshot/$foto"
+			temp=true
+			;;
+		"file") # don't save to clipboard
+			file=true
+			;;
+		"-t") # delayed screenshot, for popup menus
+			i=$((i + 1))
+			eval "time=\${$i-0}"
+			screenshot(){
+				t=1050
+				until [ $time -le 0 ]; do
+					[ $time -eq 1 ] && t=500
+					notify-send -r 13 -t $t "Screenshot" "$time"s
+					sleep 1
+					time=$((time - 1))
+				done
+				shotgun -f png $select "$out"
+				notify-send -t 1000 "Screen, shot" &
+			}
+			;;
+		"edit") # uses advanced proprietary shellscripted basicrop algorithm......
+			recentPic="$(find "/tmp/$USER/screenshot" "$fotoDir" -maxdepth 1 -type f -printf '%T+\t%p\n' | sort -nr | cut -f2 | xargs file --mime-type  2>/dev/null | grep -F 'image/' | cut -d ':' -f 1 | head -n1)"
+			[ $temp ] && newDir="$(dirname "$recentPic")" || newDir="$fotoDir"
+			[ -f "$newDir/$(basename $recentPic)" ] && newPic="$newDir/$(echo "$(basename $recentPic)" | sed 's/\(.*\)\..*/\1/')-c.$(echo "$recentPic" | sed 's/.*\.//')" || newPic="$newDir/$(basename $recentPic)"
+
+			basicrop "$recentPic" "$newPic" || exit 1
+			! [ -f "$newPic" ] && newPic="$recentPic" && overwritten=true
+			[ $file ] || xclip -t "image/png" -sel c "$newPic"
+			! [ $overwritten ] && [ $temp ] && rm "$newPic"
+			exit 0
+			;;
+	esac
+	i=$(($i + 1))
+done
+
+screenshot
+[ $file ] || xclip -t "image/png" -sel c "$out"
+
+deleteOld(){
+	if [ $temp ]; then
+		cd "/tmp/$USER/screenshot" || exit
+		numLimit=100 # delete screenshots
+		i=$(($(ls | wc -l) - $numLimit))
+		[ $i -gt 0 ] && ls -tr --quoting-style=shell-escape | head -n $(($(ls | wc -l) - $numLimit)) | xargs rm
+		cd || exit
+	fi
+}
+deleteOld &

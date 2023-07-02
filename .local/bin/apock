@@ -1,0 +1,85 @@
+#!/bin/sh
+# warn feature used with xss-lock
+if [ "$1" = "warn" ]; then
+	# don't know how to get the actual xorg screensaver time, so relying on user-set environment var
+	i=${XORG_SCREENSAVER_CYCLE-5}
+	while [ $i -gt 0 ]; do
+		t=1050
+		[ $i -eq 1 ] && t=600 # prevents dunst from displaying this when waking up
+		notify-send -r 13 -t $t "Locking" "$i\s"
+		sleep 1
+		i=$((i - 1))
+	done
+	sleep 2147483647 &
+	wait
+fi
+
+# kill secret services; if someone unlocks my beloved screen, at least they won't have my most important shit
+( killall keepassxc keepmenu; sleep 3; killall -s 9 keepassxc keepmenu ) 2>/dev/null &
+
+# (sleep 2; dunstctl set-paused true) &
+dunstctl set-paused true
+
+# set up visualizer
+visualizer(){
+	terminal=alacritty
+
+	exiter(){
+		wait $lockPID
+		kill $fallbackPID
+		kill $termPID
+		kill -s CONT $pidList 2>/dev/null
+	}
+
+	alock -a passwd -b none & lockPID=$!
+
+	# pause all non-server programs accessing the fifo
+
+	fifoFile="/tmp/mpd.fifo"
+	# pause the shells attached to visualizers (if any) to prevent shitassery
+	blackParents="zsh sh dash bash fish"
+	# protect these programs accessing the fifo from being paused
+	whiteChildren="mpd safe_fifo"
+
+	for pid in $(lsof "$fifoFile" | sed '1d' | sed 's/\S*\s*//' | cut -d' ' -f1); do
+		pidName="$(ps -cp $pid -o comm="" | sed 's/^\s*//')"
+		for n in $whiteChildren; do
+			if [ "$n" = "$pidName" ]; then
+				protect=true
+				break
+			else
+				protect=false
+			fi
+		done
+		$protect || pidList="$pidList $pid"
+		ppid="$(ps -cp $pid -o ppid="" | sed 's/^\s*//')"
+		ppidName="$(ps -cp $ppid -o comm="" | sed 's/^\s*//')"
+		for n in $blackParents; do
+			if [ "$ppidName" = "$n" ]; then 
+				pidList="$pidList $ppid"
+			fi
+		done
+	done
+	kill -s STOP $pidList 2>/dev/null
+
+	# kitty -o background="#000000" -o background_opacity=1 -o font_size=10 --start-as fullscreen vis & termPID=$!
+	alacritty -o 'colors.primary.background="#000000"' -o 'window.opacity=1' -o 'window.startup_mode=Fullscreen' -e vis & termPID=$!
+	while true; do # ensure screen is covered if terminal fails
+		sleep 0.5
+		if ! ps -p $termPID >/dev/null 2>&1; then
+			kill $lockPID
+			alock -a passwd
+			exiter
+			break
+		fi
+	done 2>/dev/null & fallbackPID=$!
+	exiter
+}
+
+
+if command -v $terminal >/dev/null && command -v vis >/dev/null; then
+	visualizer
+else
+	alock -a passwd
+fi
+dunstctl set-paused false

@@ -1,0 +1,17 @@
+#!/bin/sh
+tmpPic="$(mktemp)"
+tmpTxt="$(mktemp)"
+eval "shotgun -f pam $(hacksaw -f '-i %i -g %g' || (notify-send "Cancelling" && (rm "$tmpPic" "$tmpTxt" ; kill 0))) '$tmpPic'"
+
+zbarimg "$tmpPic" | cut -d: -f2- > "$tmpTxt"
+if [ -s "$tmpTxt" ]; then
+	xclip -sel clip "$tmpTxt" && notify-send "Grabbed barcode"
+else
+	tesseract "$tmpPic" stdout --oem 1 -l eng+osd > "$tmpTxt"
+	if [ -s "$tmpTxt" ]; then
+		xclip -sel clip "$tmpTxt" && notify-send "Grabbed text"
+	else
+		notify-send "Nothing detected"
+	fi
+fi
+rm "$tmpPic" "$tmpTxt"

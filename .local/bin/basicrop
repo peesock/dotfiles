@@ -1,0 +1,228 @@
+#!/bin/sh
+
+# uses X screen selection and fullscreen image viewing to calculate cropped dimensions for an arbitrary image, and then crops.
+# no transformations or translations or anything of the image in question will work, as the image viewer cannot easily communicate the location and scale of the image.
+
+# 'c' to crop.
+# 'u' to undo.
+# 'Escape' or 'q' to quit.
+# 'Return' to save as $OUTPUT (overwrites if none specified)
+# 'shift' + 'Return' to overwrite regardless.
+
+# 1st arg is input file, 2nd arg is output. overwrites input if 2nd arg not specified.
+
+screenW=1920
+screenH=1080
+
+[ -n "$1" ] && INPUT="$1" || echo "Syntax: \$1 = input file, \$2 = output file"
+[ -n "$2" ] && OUTPUT="$2" || OUTPUT="$1"
+
+mkdir -p "/tmp/$USER/basicrop/"
+
+# Launches image viewer with a keylogger
+imglauncher() {
+	# sxiv SUCKS
+	# nsxiv -fbs f --anti-alias=no "$1" &
+	feh -F -Z -. --force-aliasing "$1" &
+	imgPID=$!
+echo '
+c
+	echo "crop" >> /tmp/$USER/basicrop/keylog
+u
+	echo "undo" >> /tmp/$USER/basicrop/keylog
+q
+	echo "cancel" >> /tmp/$USER/basicrop/keylog
+Escape
+	echo "cancel" >> /tmp/$USER/basicrop/keylog
+Return
+	echo "save" >> /tmp/$USER/basicrop/keylog
+shift + Return
+	echo "overwrite" >> /tmp/$USER/basicrop/keylog' > "/tmp/$USER/basicrop/sxhkdrc"
+
+	sxhkd -c "/tmp/$USER/basicrop/sxhkdrc" &
+	sxhkdPID=$!
+}
+
+cropmath(){
+	eval $cropString
+	eval "$(gm identify -format sourceWidth=%w\ sourceHeight=%h $pointerFile)"	# variables for dimensions of source image
+	aspectScreen=$(echo "scale=16; $screenW/$screenH" | bc)		# find aspect ratios
+	aspectFile=$(echo "scale=16; $sourceWidth/$sourceHeight"| bc)
+
+	boolWider=$(echo "$aspectFile>$aspectScreen" | bc)
+
+	if [ $boolWider -eq 1 ]; then
+		# trim the tops of the crop
+		cropTrim=$(echo "scale=0; ($(echo "scale=16; ($screenH-($screenW/$aspectFile))/2" | bc)+0.5)/1" | bc)
+		scale=$(echo "scale=16; $sourceWidth/$screenW" | bc)
+
+		caseIn="tops"
+	elif [ $boolWider -eq 0 ]; then
+		# trim the sides of the crop
+		cropTrim=$(echo "scale=0; ($(echo "scale=16; ($screenW-($screenH*$aspectFile))/2" | bc)+0.5)/1" | bc)
+		scale=$(echo "scale=16; $sourceHeight/$screenH" | bc)
+
+		caseIn="sides"
+	fi
+#	echo $cropTrim
+
+#	echo $cropPosX $cropPosY $cropWidth $cropHeight
+	case $caseIn in		#trims the crop if it goes out of bounds
+		sides)
+			if [ $cropPosX -lt $cropTrim ]; then
+				cropWidth=$(($cropWidth - ($cropTrim - $cropPosX)))
+				cropPosX=$cropTrim
+			fi
+			if [ $(($cropPosX + $cropWidth)) -gt $(($screenW - $cropTrim)) ]; then
+				cropWidth=$(($cropWidth - (($cropPosX + $cropWidth) - ($screenW - $cropTrim))))
+			fi
+#			echo $cropPosX $cropWidth
+			;;
+		tops)
+			if [ $cropPosY -lt $cropTrim ]; then
+				cropHeight=$(($cropHeight - ($cropTrim - $cropPosY)))
+				cropPosY=$cropTrim
+			fi
+			if [ $(($cropPosY + $cropHeight)) -gt $(($screenH - $cropTrim)) ]; then
+				cropHeight=$(($cropHeight - (($cropPosY + $cropHeight) - ($screenH - $cropTrim))))
+			fi
+#			echo $cropPosY $cropHeight
+			;;
+	esac
+		# Now that the crop dimensions have been cleaned up, they must be downscaled to
+		# work with the smaller source image. This will also support upscaling.
+#	echo $scale
+#	echo $screenW $screenH $sourceWidth $sourceHeight
+#	echo $cropWidth $cropHeight $cropPosX $cropPosY
+	case $caseIn in
+		sides)
+				# In order for the big-screen measurements from hacksaw to work with
+				# a real arbitrarily sized image, $cropTrim has to be subtracted from
+				# the position measurement of whatever dimension (x or y) is getting
+				# trimmed, because that dimension won't be constrained to the borders
+				# of the screen.
+			cropPosX=$(echo "scale=0; ($(echo "scale=16; ($cropPosX-$cropTrim)*$scale" | bc)+0.5)/1" | bc)
+			cropPosY=$(echo "scale=0; ($(echo "scale=16; ($cropPosY)*$scale" | bc)+0.5)/1" | bc)
+			;;
+		tops)
+			cropPosX=$(echo "scale=0; ($(echo "scale=16; ($cropPosX)*$scale" | bc)+0.5)/1" | bc)
+			cropPosY=$(echo "scale=0; ($(echo "scale=16; ($cropPosY-$cropTrim)*$scale" | bc)+0.5)/1" | bc)
+			;;
+	esac
+
+	cropWidth=$(echo "scale=0; ($(echo "scale=16; $cropWidth*$scale" | bc)+0.5)/1" | bc)
+	cropHeight=$(echo "scale=0; ($(echo "scale=16; $cropHeight*$scale" | bc)+0.5)/1" | bc)
+#	echo $cropWidth $cropHeight $cropPosX $cropPosY
+}
+
+keylogger(){
+	keylogFile=/tmp/$USER/basicrop/keylog
+	touch $keylogFile
+	while true; do
+		lastline="$(tail -n 1 $keylogFile)"
+	 	if [ "$lastline" != "" ]; then
+			keyInput=$lastline
+			break
+		fi
+	done
+}
+
+editoptions(){
+	case $keyInput in
+		crop)
+			echo cropping
+			cropString=$(hacksaw -f cropPosX=%x' 'cropPosY=%y' 'cropWidth=%w' 'cropHeight=%h)
+			if [ $? -ne 0 ]; then
+				keyInput="cancel"
+				editoptions
+			fi
+			;;
+		undo)
+			echo undoing
+			kill $imgPID
+			unset cropString
+			;;
+		save)
+			if [ $i -eq 0 ]; then
+				echo 'same file. overwriting...'
+				keyInput="overwrite"
+				editoptions
+			else
+				notify-send -t 2000 "Saving"
+				mv $pointerFile $OUTPUT
+				kill $imgPID
+				rm /tmp/$USER/basicrop/*
+			fi
+			unset cropString
+			exitBool=true
+			;;
+		cancel)
+			notify-send -t 2000 "Cancelling"
+			kill $imgPID
+			rm /tmp/$USER/basicrop/*
+			unset cropString
+			exitBool=true
+			exitCode=1
+			;;
+		overwrite)
+			notify-send -t 2000 "Overwriting"
+			kill $imgPID
+			mv $pointerFile $INPUT
+			rm /tmp/$USER/basicrop/*
+			unset cropString
+			exitBool=true
+			;;
+		*)
+			echo error.
+			;;
+	esac
+}
+
+
+# fullscreen image in feh, using hacksaw to crop. Then
+# store that image in cache, open in feh, and allow
+# user to undo, crop more, or save.
+edit() {
+	pointerFile=$INPUT
+	i=0
+	until [ $exitBool ]; do
+		if [ "$keyInput" = "undo" ]; then
+
+			if [ $i -le 0 ]; then
+				pointerFile=$INPUT
+			elif [ $i -eq 1 ]; then
+				pointerFile=$INPUT
+				i=$(($i - 1))
+			else
+				i=$(($i - 1))
+				rm "/tmp/$USER/basicrop/$i"
+				pointerFile="/tmp/$USER/basicrop/$(($i - 1))"
+			fi
+		fi
+#		echo "i: $i"
+#		echo "pointerFile: $pointerFile"
+		imglauncher $pointerFile
+		unset keyInput
+		keylogger # sets a variable
+		kill $sxhkdPID
+		rm $keylogFile
+		editoptions # accepts a variable
+		if [ -n "$cropString" ]; then
+
+			cropmath #big function btw
+
+			# crop through graphicsmagick
+			tempFile="/tmp/$USER/basicrop/$i"
+			mkdir -p /tmp/$USER/basicrop/
+			gm convert $pointerFile -crop "$cropWidth"x"$cropHeight"+"$cropPosX"+"$cropPosY" $tempFile
+			kill $imgPID
+			pointerFile=$tempFile
+			i=$(($i + 1))
+		fi
+	done
+}
+echo $INPUT
+echo $OUTPUT
+notify-send -t 2000 "Editing"
+edit
+exit $exitCode

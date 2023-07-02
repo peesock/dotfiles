@@ -1,0 +1,28 @@
+#!/bin/sh
+
+# args:
+#		$1 - control interface
+#		$2 - hardware device (optional)
+# behavior:
+#		If channel 1 > 0% volume, set it to 0%.
+#		If channel 1 = 0% volume, set it to the previous state (unmute).
+#		This should save state for all channels, but only ch. 1 is used for logic.
+
+ctl="$1"
+pcmdev="${2-default}"
+stateFile="$HOME/.cache/softmute/$pcmdev-$ctl"
+# stateFile="/tmp/$USER/softmute/$pcmdev-$ctl"
+mkdir -p "$(dirname "$stateFile")"
+
+chanvols="$(amixer -D "$pcmdev" sget "$ctl" | grep '%\]' | awk -F'[][]' '{ print $2 }')"
+! [ -s "$stateFile" ] && echo "$chanvols" > "$stateFile"
+
+if [ "$(echo "$chanvols" | head -n1)" = "0%" ]; then
+	setvols="$(cat "$stateFile")"
+else
+	setvols="$(sed 's/\S*/0%/g' < "$stateFile")"
+	echo "$chanvols" > "$stateFile"
+fi
+
+amixer -q -D "$pcmdev" sset "$ctl" "$(echo "$setvols" | tr "\n" ",")"
+volnotify.sh "$ctl" "$pcmdev"

@@ -1,0 +1,5 @@
+#!/bin/sh
+# randomly sets the background with a single xwallpaper argument.
+
+rngbg=$(find /home/apoc/pics/wallpapers -type f -print | shuf -n 1)
+xwallpaper $1 $rngbg
