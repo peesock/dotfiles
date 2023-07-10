@@ -68,7 +68,7 @@ super + d
 	dmenu_run_history
 
 super + p
-	if pgrep -x "keepassxc"; then keepmenu; else keepassxc; fi
+	passwords
 
 super + ctrl + p
 	killall keepassxc && notify-send -t 1000 "Killed keepassxc" || notify-send -t 1000 "kpxc error" ;\
@@ -112,7 +112,7 @@ super + u; {o,s,p,c}
 	servtoggle.sh picom}
 
 
-# Media Keys
+# Audio
 # raise audio +2%
 {super + ctrl + bracketright, super + bracketright, super + alt + bracketright}
 	amixer -q -M -D {'hw:PCH' sset 'Master' 2%+; volnotify.sh Master hw:PCH, 'hw:Loopback' sset 'Global' 2%+; volnotify.sh Global, 'hw:Loopback' sset 'MPD' 2%+; volnotify.sh MPD}

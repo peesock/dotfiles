@@ -11,8 +11,7 @@ xset s on
 xset s noblank # prevents monitor from shutting off (nvidia + monitor bug of mine), displays pattern instead (unless screen saver/locker is set)
 xset -dpms # disable dpms; i want to configure everything in my Xorg config
 
-export XORG_SCREENSAVER_CYCLE=10
-xset s 900 $XORG_SCREENSAVER_CYCLE # set screen saver/locker timeout
+xset s 900 10 # set screen saver/locker timeout
 xss-lock -n 'apock warn' -- apock &
 
 xsetroot -cursor_name left_ptr # ensures correct cursor on X root window
@@ -26,7 +25,7 @@ mpd &
 udiskie &
 qbittorrent &
 picom &
-syncthing --no-browser &
+syncthing --no-browser > ~/.cache/syncthing.log 2>&1 &
 
 # Ensure that xrdb has finished running before moving on to start the WM/DE.
 [ -n "$xrdbpid" ] && wait "$xrdbpid"

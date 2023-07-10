@@ -1,8 +1,8 @@
-#!/bin/sh
+#!/bin/sh 
+
 # warn feature used with xss-lock
 if [ "$1" = "warn" ]; then
-	# don't know how to get the actual xorg screensaver time, so relying on user-set environment var
-	i=${XORG_SCREENSAVER_CYCLE-5}
+	i=$(xset q | grep cycle | awk '{print $4}')
 	while [ $i -gt 0 ]; do
 		t=1050
 		[ $i -eq 1 ] && t=600 # prevents dunst from displaying this when waking up
@@ -14,34 +14,38 @@ if [ "$1" = "warn" ]; then
 	wait
 fi
 
-# kill secret services; if someone unlocks my beloved screen, at least they won't have my most important shit
-( killall keepassxc keepmenu; sleep 3; killall -s 9 keepassxc keepmenu ) 2>/dev/null &
+pidDir="/tmp/$USER/$(basename "$0")"
+mkdir -p "$pidDir"
 
-# (sleep 2; dunstctl set-paused true) &
-dunstctl set-paused true
+pre(){
+	# kill secret services; if someone unlocks my screen, at least they won't have my unecrypted passwords
+	( killall keepassxc keepmenu; sleep 3; killall -s 9 keepassxc keepmenu ) 2>/dev/null &
+
+	# (sleep 2; dunstctl set-paused true) &
+	dunstctl set-paused true
+	rm "$pidDir"/*
+}
+post(){
+	dunstctl set-paused false
+}
 
 # set up visualizer
 visualizer(){
 	terminal=alacritty
 
-	exiter(){
-		wait $lockPID
-		kill $fallbackPID
-		kill $termPID
-		kill -s CONT $pidList 2>/dev/null
-	}
-
 	alock -a passwd -b none & lockPID=$!
+	echo $lockPID > "$pidDir/lockPID"
 
 	# pause all non-server programs accessing the fifo
-
 	fifoFile="/tmp/mpd.fifo"
 	# pause the shells attached to visualizers (if any) to prevent shitassery
 	blackParents="zsh sh dash bash fish"
 	# protect these programs accessing the fifo from being paused
 	whiteChildren="mpd safe_fifo"
 
+	# create and kill pidList
 	for pid in $(lsof "$fifoFile" | sed '1d' | sed 's/\S*\s*//' | cut -d' ' -f1); do
+	# for pid in $(sleep 100 | sed '1d' | sed 's/\S*\s*//' | cut -d' ' -f1); do
 		pidName="$(ps -cp $pid -o comm="" | sed 's/^\s*//')"
 		for n in $whiteChildren; do
 			if [ "$n" = "$pidName" ]; then
@@ -63,23 +67,39 @@ visualizer(){
 	kill -s STOP $pidList 2>/dev/null
 
 	# kitty -o background="#000000" -o background_opacity=1 -o font_size=10 --start-as fullscreen vis & termPID=$!
-	alacritty -o 'colors.primary.background="#000000"' -o 'window.opacity=1' -o 'window.startup_mode=Fullscreen' -e vis & termPID=$!
-	while true; do # ensure screen is covered if terminal fails
-		sleep 0.5
-		if ! ps -p $termPID >/dev/null 2>&1; then
-			kill $lockPID
-			alock -a passwd
-			exiter
-			break
-		fi
-	done 2>/dev/null & fallbackPID=$!
-	exiter
+	alacritty -o 'colors.primary.background="#000000"' -o 'window.opacity=1' -o 'window.startup_mode=Fullscreen' -e vis & coverPID=$!
+	echo $coverPID > "$pidDir/coverPID"
+
+	wait "$lockPID"
+	kill "$fallbackPID"
+	kill "$coverPID"
+	kill -s CONT $pidList
 }
 
+fallback(){
+	sleep 3
+	coverPID=$(cat "$pidDir/coverPID")
+	funcPID=$(cat "$pidDir/funcPID")
+	lockPID=$(cat "$pidDir/lockPID")
+	while true; do # ensure screen is covered if cover fails
+		if ! ps -p $coverPID >/dev/null 2>&1; then
+			pgrep alock
+			kill $funcPID
+			kill $lockPID
+			pgrep alock
+			alock -a passwd > ~/log 2>&1
+			break
+		fi
+		sleep 0.5
+	done
+}
 
+pre
+fallback & fallbackPID=$!
 if command -v $terminal >/dev/null && command -v vis >/dev/null; then
-	visualizer
+	visualizer & echo $! > "$pidDir/funcPID"
 else
 	alock -a passwd
 fi
-dunstctl set-paused false
+wait
+post

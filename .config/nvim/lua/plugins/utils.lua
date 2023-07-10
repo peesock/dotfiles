@@ -8,6 +8,9 @@ return {
 	{
 		"kovetskiy/sxhkd-vim",
 	},
+	{
+		"waycrate/swhkd-vim",
+	},
 
 	{
 		"junegunn/goyo.vim",

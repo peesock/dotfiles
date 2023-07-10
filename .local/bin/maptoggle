@@ -1,5 +1,8 @@
 #!/bin/sh
 
+# new feature: allow tagging existing windows
+
+
 # Toggle an X window between mapped and unmapped, ie, visible/invisible, using
 # custom window properties to distinguish windows. Uses xdotool and xprop.
 
