@@ -1,4 +1,4 @@
-#!/bin/sh 
+#!/bin/sh
 
 # warn feature used with xss-lock
 if [ "$1" = "warn" ]; then
@@ -14,26 +14,57 @@ if [ "$1" = "warn" ]; then
 	wait
 fi
 
+# lock arguments you'll always want
+alias lock='alock -a passwd'
+
+# for storing inaccesible variables
 pidDir="/tmp/$USER/$(basename "$0")"
 mkdir -p "$pidDir"
 
 pre(){
-	# kill secret services; if someone unlocks my screen, at least they won't have my unecrypted passwords
+	# kill secret services: if someone unlocks my screen, at least they won't have my unecrypted passwords
 	( killall keepassxc keepmenu; sleep 3; killall -s 9 keepassxc keepmenu ) 2>/dev/null &
 
 	# (sleep 2; dunstctl set-paused true) &
 	dunstctl set-paused true
-	rm "$pidDir"/*
+	rm "$pidDir"/* 2>/dev/null
 }
 post(){
 	dunstctl set-paused false
 }
 
+
+# simple fallback always runs in case the lock cover fails
+fallback(){
+	sleep 3
+	# external variables used here have to be imported from $pidDIR
+	coverPID=$(cat "$pidDir/coverPID")
+	lockPID=$(cat "$pidDir/lockPID")
+	funcPID=$(cat "$pidDir/funcPID")
+	while true; do
+		if ! ps -p $coverPID >/dev/null 2>&1; then # small bug: if a process with the same PID spawns within the 0.5s gap from the original PID dying, no fault will be detected.
+			notify-send -u critical "Lock screen:" "Cover failed. Used fallback" &
+			kill $funcPID
+			kill $lockPID
+			lock
+			break
+		fi
+		# if ! ps -p $lockPID >/dev/null 2>&1; then
+		# 	notify-send -u critical "Lock screen:" "Lock failed. Used fallback" &
+		# 	kill $funcPID
+		# 	kill $coverPID
+		# 	lock
+		# 	break
+		# fi
+		sleep 0.5
+	done
+} 2>/dev/null
+
 # set up visualizer
 visualizer(){
 	terminal=alacritty
 
-	alock -a passwd -b none & lockPID=$!
+	lock -b none & lockPID=$!
 	echo $lockPID > "$pidDir/lockPID"
 
 	# pause all non-server programs accessing the fifo
@@ -71,35 +102,16 @@ visualizer(){
 	echo $coverPID > "$pidDir/coverPID"
 
 	wait "$lockPID"
-	kill "$fallbackPID"
+	(kill "$fallbackPID"
 	kill "$coverPID"
-	kill -s CONT $pidList
+	kill -s CONT $pidList) &
 }
 
-fallback(){
-	sleep 3
-	coverPID=$(cat "$pidDir/coverPID")
-	funcPID=$(cat "$pidDir/funcPID")
-	lockPID=$(cat "$pidDir/lockPID")
-	while true; do # ensure screen is covered if cover fails
-		if ! ps -p $coverPID >/dev/null 2>&1; then
-			pgrep alock
-			kill $funcPID
-			kill $lockPID
-			pgrep alock
-			alock -a passwd > ~/log 2>&1
-			break
-		fi
-		sleep 0.5
-	done
-}
-
+# main
 pre
 fallback & fallbackPID=$!
 if command -v $terminal >/dev/null && command -v vis >/dev/null; then
 	visualizer & echo $! > "$pidDir/funcPID"
-else
-	alock -a passwd
 fi
 wait
 post
