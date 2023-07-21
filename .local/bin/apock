@@ -24,15 +24,12 @@ mkdir -p "$pidDir"
 pre(){
 	# kill secret services: if someone unlocks my screen, at least they won't have my unecrypted passwords
 	( killall keepassxc keepmenu; sleep 3; killall -s 9 keepassxc keepmenu ) 2>/dev/null &
-
-	# (sleep 2; dunstctl set-paused true) &
 	dunstctl set-paused true
 	rm "$pidDir"/* 2>/dev/null
 }
 post(){
 	dunstctl set-paused false
 }
-
 
 # simple fallback always runs in case the lock cover fails
 fallback(){

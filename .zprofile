@@ -2,15 +2,16 @@
 # vim: ft=sh
 
 # custom environment variables
-export QT_QPA_PLATFORMTHEME=qt5ct
 export TERMINAL=kitty
 export BROWSER=firefox
 export SCREENSHOTS=$HOME/pics/screenshots
 export EDITOR=nvim
 export XDG_CONFIG_HOME="$HOME/.config"
 export PATH=$HOME/.local/bin:$PATH
-export MANPAGER="sh -c 'col -bx | bat -l man -p'"
+# export MANPAGER="sh -c 'col -bx | bat -l man -p'"
+export MANPAGER="less"
 export PAGER="less"
+export QT_QPA_PLATFORMTHEME=qt5ct
 export GTK_THEME= 'Dracula' # 'Sweet-Dark-v40'
 export GOPATH="$HOME/.local/share/go/"
 export DBUS_SESSION_BUS_ADDRESS="autolaunch:" # don't ask me how dbus works
