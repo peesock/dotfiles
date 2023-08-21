@@ -160,8 +160,8 @@ pcm.micsnooper{
 
 pcm.mpd {
 	type asym
-		playback.pcm "pcm.mpdrouter"
-		capture.pcm "pcm.mpdsnooper"
+		playback.pcm "plug:pcm.mpdrouter"
+		capture.pcm "plug:pcm.mpdsnooper"
 		hint {
 			show on
 				description "for playing from and recording MPD."
