@@ -38,23 +38,13 @@ fallback(){
 	coverPID=$(cat "$pidDir/coverPID")
 	lockPID=$(cat "$pidDir/lockPID")
 	funcPID=$(cat "$pidDir/funcPID")
-	while true; do
-		if ! ps -p $coverPID >/dev/null 2>&1; then # small bug: if a process with the same PID spawns within the 0.5s gap from the original PID dying, no fault will be detected.
-			notify-send -u critical "Lock screen:" "Cover failed. Used fallback" &
-			kill $funcPID
-			kill $lockPID
-			lock
-			break
-		fi
-		# if ! ps -p $lockPID >/dev/null 2>&1; then
-		# 	notify-send -u critical "Lock screen:" "Lock failed. Used fallback" &
-		# 	kill $funcPID
-		# 	kill $coverPID
-		# 	lock
-		# 	break
-		# fi
-		sleep 0.5
-	done
+	if waitpid $coverPID; then
+		notify-send -u critical "Lock screen:" "Cover failed. Used fallback" &
+		kill $funcPID
+		kill $lockPID
+		lock
+	fi
+
 } 2>/dev/null
 
 # set up visualizer
