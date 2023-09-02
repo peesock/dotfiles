@@ -22,7 +22,7 @@ pidDir="/tmp/$USER/$(basename "$0")"
 mkdir -p "$pidDir"
 
 pre(){
-	# kill secret services: if someone unlocks my screen, at least they won't have my unecrypted passwords
+	# kill secret services: if someone unlocks my screen, at least they won't have my unencrypted passwords
 	( killall keepassxc keepmenu; sleep 3; killall -s 9 keepassxc keepmenu ) 2>/dev/null &
 	dunstctl set-paused true
 	rm "$pidDir"/* 2>/dev/null
@@ -35,15 +35,16 @@ post(){
 fallback(){
 	sleep 3
 	# external variables used here have to be imported from $pidDIR
-	coverPID=$(cat "$pidDir/coverPID")
-	lockPID=$(cat "$pidDir/lockPID")
-	funcPID=$(cat "$pidDir/funcPID")
-	if waitpid $coverPID; then
-		notify-send -u critical "Lock screen:" "Cover failed. Used fallback" &
+	for f in $pidDir/* ; do
+		eval "$(basename $f)=$(cat $f)"
+	done
+	# echo $coverPID $lockPID $funcPID
+	waitpid $coverPID; (
+		notify-send -u critical "Lock screen" "Cover failed. Used fallback" &
 		kill $funcPID
 		kill $lockPID
 		lock
-	fi
+	)
 
 } 2>/dev/null
 

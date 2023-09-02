@@ -25,7 +25,7 @@ return {
 				highlight = {
 					enable = true,
 					disable = {
-						"bash",
+						-- "bash",
 					},
 
 					-- NOTE: these are the names of the parsers and not the filetype. (for example if you want to

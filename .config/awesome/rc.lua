@@ -125,7 +125,7 @@ function dump(o)
 end
 
 -- Create a textclock widget
-textclock = wibox.widget.textclock("%a [%Y-%m-%d] [%H:%M:%S]", 1)
+textclock = wibox.widget.textclock("%a %Y-%m-%d [%H:%M:%S]", 1)
 screen.connect_signal("request::desktop_decoration", function(s)
 	-- Each screen has its own tag table.
 	awful.tag({ "1", "2", "3", "4", "5", "6", "7", "8", "9", "0" }, s, awful.layout.layouts[1])

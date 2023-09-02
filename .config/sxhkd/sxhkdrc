@@ -114,13 +114,13 @@ super + u; {o,s,p,c}
 
 
 # Audio
-# raise audio +2%
+# raise audio +4%
 {super + ctrl + bracketright, super + bracketright, super + alt + bracketright}
-	amixer -q -M -D {'hw:PCH' sset 'Master' 2%+; volnotify.sh Master hw:PCH, 'hw:Loopback' sset 'Global' 2%+; volnotify.sh Global, 'hw:Loopback' sset 'MPD' 2%+; volnotify.sh MPD}
+	amixer -q -M -D {'hw:PCH' sset 'Master' 4%+; volnotify.sh Master hw:PCH, 'hw:Loopback' sset 'Global' 4%+; volnotify.sh Global, 'hw:Loopback' sset 'MPD' 4%+; volnotify.sh MPD}
 
-# lower volume -2%
+# lower volume -4%
 {super + ctrl + bracketleft, super + bracketleft, super + alt + bracketleft}
-	amixer -q -M -D {'hw:PCH' sset 'Master' 2%-; volnotify.sh Master hw:PCH, 'hw:Loopback' sset 'Global' 2%-; volnotify.sh Global, 'hw:Loopback' sset 'MPD' 2%-; volnotify.sh MPD}
+	amixer -q -M -D {'hw:PCH' sset 'Master' 4%-; volnotify.sh Master hw:PCH, 'hw:Loopback' sset 'Global' 4%-; volnotify.sh Global, 'hw:Loopback' sset 'MPD' 4%-; volnotify.sh MPD}
 
 # toggle mute
 super + ctrl + backslash

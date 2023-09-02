@@ -15,6 +15,7 @@ return {
 
 	{
 		"lmburns/lf.nvim",
+		enabled = false,
 		lazy = false,
 		dependencies = {
 			"akinsho/toggleterm.nvim",
