@@ -1,4 +1,5 @@
 # Basic vars
+$PATH="$PATH:$HOME/.config/lf/bin/"
 set shellopts '-eu'
 set ifs "\n"
 set scrolloff 10
@@ -13,7 +14,6 @@ set cleaner ctpvclear
 set shell "/usr/bin/zsh"
 set incfilter true
 
-# cmds/functions
 # cmd open ${{
 #     case $(file --mime-type "$(readlink -f $f)" -b) in
 # 	application/vnd.openxmlformats-officedocument.spreadsheetml.sheet) localc $fx ;;

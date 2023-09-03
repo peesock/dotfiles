@@ -1,0 +1,2 @@
+#!/bin/sh
+echo "$fs" | while read -r n; do "$@" "$n"; done

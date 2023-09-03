@@ -13,7 +13,7 @@ super + Return
 
 # open lf
 super + alt + f
-	$TERMINAL --title lf -e sh -c "lf;$SHELL"
+	$TERMINAL --title lf -e sh -c "lfpp;$SHELL"
 
 # open default browser
 super + a; w
