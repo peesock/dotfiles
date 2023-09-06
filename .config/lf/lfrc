@@ -1,17 +1,14 @@
 # Basic vars
-$PATH="$PATH:$HOME/.config/lf/bin/"
+set shell "/usr/bin/zsh"
 set shellopts '-eu'
 set ifs "\n"
 set scrolloff 10
 #set icons "$LF_ICONS"
 set period 1
-# set cleaner '~/.config/lf/cleaner'
-# set previewer '~/.config/lf/scope'
 set previewer ctpv
 set cleaner ctpvclear
 &ctpv -s $id
 &ctpvquit $id
-set shell "/usr/bin/zsh"
 set incfilter true
 
 # cmd open ${{
@@ -34,17 +31,6 @@ set incfilter true
 # 	application/pgp-encrypted) $EDITOR $fx ;;
 #         *) for f in $fx; do setsid -f $OPENER $f >/dev/null 2>&1; done;;
 #     esac
-# }}
-#
-# cmd mkdir $mkdir -p "$(echo $* | tr ' ' '\ ')"
-#
-# cmd extract.old ${{
-# 	clear; tput cup $(($(tput lines)/3)); tput bold
-# 	set -f
-# 	printf "%s\n\t" "$fx"
-# 	printf "extract?[y/N]"
-# 	read ans
-# 	[ $ans = "y" ] && aunpack $fx
 # }}
 
 # cmd moveto ${{
@@ -69,8 +55,6 @@ set incfilter true
 # 	notify-send "📋 File(s) copied." "File(s) copies to $dest."
 # }}
 #
-cmd bulkrename $vidir
-
 cmd videomusic &{{
 	cover="$(mktemp -u tmp.XXXX.png)"
 	if ! ffmpeg -i "$f" "$cover"; then
@@ -126,12 +110,12 @@ map o %echo $fx | sed "s/^/file:\/\//g" | tr '\n' '\0' | xargs -0 mpc add && ech
 #
 map U clear
 
-map A rename # at the very end
+map A :rename; cmd-end # at the very end
 map c push A<c-u> # new rename
-map I push A<c-a> # at the very beginning
-map i push A<a-b><a-b><a-f> # before extension
-map a push A<a-b> # after extension
-map B bulkrename
+map I :rename; cmd-home # at the very beginning
+map i :rename # before extension
+map a :rename; cmd-right # after extension
+map B $vidir # bulk rename
 
 # map V push :!nvim<space>
 

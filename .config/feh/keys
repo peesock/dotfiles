@@ -13,8 +13,6 @@ scroll_right_page C-l
 scroll_up_page C-k
 scroll_down_page C-j
 
-toggle_aliasing A
-toggle_filenames d
 toggle_pointer o
 toggle_fullscreen f
 
