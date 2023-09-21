@@ -1,6 +1,6 @@
 # Basic vars
 set shell "/usr/bin/zsh"
-set shellopts '-eu'
+set shellopts '-u' # disables expansion. not that it seems to make a difference *here*, anyway.
 set ifs "\n"
 set scrolloff 10
 #set icons "$LF_ICONS"
@@ -54,7 +54,27 @@ set incfilter true
 # 	done &&
 # 	notify-send "📋 File(s) copied." "File(s) copies to $dest."
 # }}
-#
+
+cmd mediapick ${{
+	fileList=$(mktemp)
+	markList=$(mktemp)
+	print0=false
+	recurse=false
+	if [ -z "$fs" ]; then
+		if [ $recurse = true ]; then
+			find . -type f -print > "$fileList"
+		else
+			find . -maxdepth 1 -type f -print > "$fileList"
+		fi
+	else
+		echo "$fs" > "$fileList"
+	fi
+	mediapick -c "$HOME/.cache/lf" -d '\n' <"$fileList" >"$markList"
+	lf -remote "send $id unselect"
+	xargs -I{} -d '\n' lf -remote "send $id toggle \"{}\"" <"$markList"
+	rm "$fileList" "$markList"
+}}
+
 cmd videomusic &{{
 	cover="$(mktemp -u tmp.XXXX.png)"
 	if ! ffmpeg -i "$f" "$cover"; then

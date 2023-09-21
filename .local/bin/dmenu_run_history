@@ -23,7 +23,7 @@ awk -v histfile=$historyfile '
 			x[$0]=1
 		}
 	} !x[$0]++ ' "$cache" \
-	| dmenu -fn "CaskaydiaCove Nerd Font" "$@" \
+	| dmenu -fn "CaskaydiaCove Nerd Font-11" "$@" \
 	| awk -v histfile=$historyfile '
 		BEGIN {
 			FS=OFS="\t"

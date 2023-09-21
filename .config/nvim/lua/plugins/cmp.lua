@@ -43,19 +43,20 @@ return {
 				mapping = cmp.mapping.preset.insert({
 					--- tab completion
 					["<Tab>"] = cmp.mapping(function(fallback)
-						if luasnip.expand_or_jumpable() then
-							luasnip.expand_or_jump()
-						elseif cmp.visible() then
+						if cmp.visible() then
 							cmp.select_next_item()
 						elseif has_words_before() then
 							cmp.complete()
+						elseif luasnip.expand_or_jumpable() then
+							luasnip.expand_or_jump()
 						else
 							fallback()
 						end
 					end, { "i", "s" }),
 					["<S-Tab>"] = cmp.mapping(function(fallback)
 						if luasnip.expand_or_jumpable() then
-							cmp.select_next_item()
+							-- cmp.select_next_item()
+							luasnip.expand_or_jump()
 						elseif cmp.visible() then
 							cmp.select_prev_item()
 						else

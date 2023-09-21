@@ -72,10 +72,10 @@ require('bootstrap')
 vim.keymap.set({'n',}, '<leader>fv', vim.cmd.Ex)
 
 -- keep cursor in middle of screen
--- vim.keymap.set('n', '<C-f>', '<C-f>zz')
--- vim.keymap.set('n', '<C-b>', '<C-b>zz')
--- vim.keymap.set('n', '<C-d>', '<C-d>zz')
--- vim.keymap.set('n', '<C-u>', '<C-u>zz')
+vim.keymap.set('n', '<C-f>', '<C-f>M')
+vim.keymap.set('n', '<C-b>', '<C-b>M')
+vim.keymap.set('n', '<C-d>', '<C-d>M')
+vim.keymap.set('n', '<C-u>', '<C-u>M')
 -- vim.keymap.set('n', 'n', 'nzzzv')
 -- vim.keymap.set('n', 'N', 'Nzzzv')
 vim.keymap.set("n", "J", "mzJ`z") -- keep cursor in same spot when Jing
@@ -124,4 +124,5 @@ vim.api.nvim_create_autocmd({ "BufReadPost" }, {
 
 
 -- Disables automatic commenting on newline:
-vim.cmd[[ autocmd FileType * setlocal formatoptions-=c formatoptions-=r formatoptions-=o ]]
+-- vim.cmd[[ autocmd FileType * setlocal formatoptions-=c formatoptions-=r formatoptions-=o ]]
+vim.cmd[[ autocmd FileType * setlocal formatoptions-=o ]]
