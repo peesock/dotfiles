@@ -1,0 +1,2 @@
+# dotfiles
+mostly scripts
