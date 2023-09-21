@@ -56,8 +56,8 @@ alias \
 	dash="rlwrap dash"
 
 	alias \
-	pubdot='git --git-dir=$HOME/.local/share/apoc/git/dotfiles/public' \
-	prvdot='git --git-dir=$HOME/.local/share/apoc/git/dotfiles/private' \
+	pubdot='git --git-dir=$HOME/.local/share/$USER/git/dotfiles/public' \
+	prvdot='git --git-dir=$HOME/.local/share/$USER/git/dotfiles/private' \
 	lf='lfpp'
 
 gidots(){

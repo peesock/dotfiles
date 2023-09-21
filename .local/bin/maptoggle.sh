@@ -1,50 +1,5 @@
 #!/bin/sh
-
 # new feature: allow tagging existing windows
-
-
-# Toggle an X window between mapped and unmapped, ie, visible/invisible, using
-# custom window properties to distinguish windows. Uses xdotool and xprop.
-
-
-# Usage:
-# ID is added to a new X window property unique to the script name, found with
-# xprop.
-
-# Command is only used to start the program, and does not need to be included
-# in future runs of this tool, assuming the window isn't killed.
-
-# -echo will echo the window id to stdout when making the window visible, for
-# use in scripts like when enabling persistent floating state or window sizes.
-# Return code 2 means the program was just started for the first time.
-
-# Commands and examples:
-# Most window properties are in the EWMH spec that your WM most likely
-# supports. For these, you can use wmctrl to control them. Some properties,
-# like floating/tiling status, are not in the spec, and depend on your specific
-# window manager. For AwesomeWM, this works:
-
-# winid=$(maptoggle "magic id" kitty -echo); awesome-client "local c = nil ; for _, c2 in ipairs(client.get()) do ; if c2.window == $winid then ; c = c2 ; break ; end ; end ; if not c then return end ; c.floating = true"
-
-# For fullscreen in ANY (EWMH-compliant) window manager:
-
-# winid=$(maptoggle "magic id" kitty); wmctrl -ir $winid -b add,fullscreen
-
-# Commands can be chained by declaring -c multiple times:
-
-# winid=$(maptoggle "magic id" kitty); xdotool windowmove $winid 25% 25% ; xdotool windowsize $winid 50% 50%
-
-# Which places a 50% sized window in the middle of the screen.
-
-# Example of a music player toggle:
-
-# wid=$(maptoggle "musically" "$TERMINAL -e ncmpcpp" -echo)
-# [ -n $wid ] &&
-# (awesome-client "local c = nil ; for _, c2 in ipairs(client.get()) do ; if c2.window == $wid then ; c = c2 ; break ; end ; end ; if not c then return end ; c.floating = true"
-# xdotool windowmove $wid 25% 25%
-# xdotool windowsize $wid 50% 50%)
-# unset wid
-
 
 uid="$(echo "$1" | tr -d ',')"
 exe="$2"
