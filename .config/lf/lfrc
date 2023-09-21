@@ -60,6 +60,9 @@ cmd mediapick ${{
 	markList=$(mktemp)
 	print0=false
 	recurse=false
+	echo $1
+	[ "$1" = "-r" ] && recurse=true
+	shift
 	if [ -z "$fs" ]; then
 		if [ $recurse = true ]; then
 			find . -type f -print > "$fileList"
@@ -69,7 +72,15 @@ cmd mediapick ${{
 	else
 		echo "$fs" > "$fileList"
 	fi
-	mediapick -c "$HOME/.cache/lf" -d '\n' <"$fileList" >"$markList"
+
+	delim="\n"
+	i=$(tr -dc "$delim" <"$fileList" | wc -c) # gets num of files
+	jobs=$(nproc)
+	num=$((i / (jobs + 1))) # set num of files per process
+
+	parallel --delimiter "$delim" --pipe --recend "$delim" -N $num -j${jobs} "mediapick -D '$HOME/.cache/lf' -d '$delim' -nv" <"$fileList"
+	mediapick -D "$HOME/.cache/lf" -d "$delim" -nc <"$fileList" > "$markList"
+
 	lf -remote "send $id unselect"
 	xargs -I{} -d '\n' lf -remote "send $id toggle \"{}\"" <"$markList"
 	rm "$fileList" "$markList"
