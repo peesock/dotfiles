@@ -11,6 +11,5 @@ if [ $greedy ]; then
 	sed "s/$USER/user/gI" "$input" > "$output"
 else
 	# one line baybie
-	sed "s/\(\/\)$USER\|$USER\(\s\+\)\|\(\s\+\)$USER\|^$USER$/\1\3user\2/gI"
-	"$input" > "$output"
+	sed "s/\(\/\)$USER\|$USER\(\s\+\)\|\(\s\+\)$USER\|^$USER$/\1\3user\2/gI" "$input" > "$output"
 fi
