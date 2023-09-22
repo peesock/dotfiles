@@ -1,6 +1,5 @@
 # Basic vars
 set shell "/usr/bin/zsh"
-set shellopts '-u' # disables expansion. not that it seems to make a difference *here*, anyway.
 set ifs "\n"
 set scrolloff 10
 #set icons "$LF_ICONS"
