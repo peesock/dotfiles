@@ -55,7 +55,8 @@ toggles an X window between mapped and unmapped, ie, visible/invisible, using cu
 
 
 ## usage
-maptoggle.sh ID "command args..." [options]
+`maptoggle.sh ID "command args..." [options]`
+
 `ID` is added to a new X window property (named with `$0`), which can be found with xprop.
 
 `command` is only used to start the program, and does not need to be included in future runs of this tool, if the window isn't killed.
