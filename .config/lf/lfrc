@@ -60,8 +60,7 @@ cmd mediapick ${{
 	print0=false
 	recurse=false
 	echo $1
-	[ "$1" = "-r" ] && recurse=true
-	shift
+	[ "$1" = "-r" ] && recurse=true && shift
 	if [ -z "$fs" ]; then
 		if [ $recurse = true ]; then
 			find . -type f -print > "$fileList"
