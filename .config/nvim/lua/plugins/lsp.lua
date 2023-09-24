@@ -2,55 +2,101 @@ return {
 	{
 		'neovim/nvim-lspconfig',
 		config = function()
-			local diagnostics_active = true
-			local virt_text = {
-				severity_limit = "Warning",
+			local icons = require("icons") -- from LunarVim
+
+			vim.diagnostic.config({
+				float = {
+					source = 'always',
+					style = 'minimal',
+					border = "rounded",
+					focusable = false,
+				},
+				-- severity: 4 is lowest severity, 1 is highest
+				virtual_text = {
+					severity = { min = 2, },
+					spacing = 2,
+				},
+				underline = {
+					severity = { min = 3, },
+				},
+				signs = {
+					severity = { min = 4 },
+				},
+				severity_sort = true,
+				update_in_insert = true,
+			})
+
+			local signs = {
+				Error = icons.diagnostics.Error,
+				Warn = icons.diagnostics.Warning,
+				Info = icons.diagnostics.Information,
+				Hint = icons.diagnostics.Hint,
 			}
-				vim.lsp.handlers["textDocument/publishDiagnostics"] = vim.lsp.with(
-					vim.lsp.diagnostic.on_publish_diagnostics, {
-						severity_sort = true,
-						signs = {
-							severity_limit = "Hint",
-						},
-						virtual_text = virt_text,
-						underline = true,
-					})
 
-			local signs = { Error = "X", Warn = " ", Hint = " ", Info = " " }
-			for type, icon in pairs(signs) do
-				local hl = "DiagnosticSign" .. type
-				vim.fn.sign_define(hl, { text = icon, texthl = hl, numhl = hl })
-			end
+			local signs_active = false
+			local function signwise(active)
+				if active then
+					for type, icon in pairs(signs) do
+						local hl = "DiagnosticSign" .. type
+						vim.fn.sign_define(hl, {
+							text = icon,
+							texthl = hl,
+							numhl = "none",
+						})
+					end
+					vim.opt.signcolumn = "yes:1"
+					vim.opt.numberwidth = 1
 
-			local function diagnostical()
-				if diagnostics_active then
-					vim.diagnostic.enable()
-					vim.diagnostic.show()
-					-- vim.lsp.handlers["textDocument/publishDiagnostics"] = vim.lsp.with(
-					-- vim.lsp.diagnostic.on_publish_diagnostics, {
-					-- 	virtual_text = virt_text,
-					-- })
 				else
-					vim.diagnostic.disable()
-					vim.diagnostic.hide()
-					-- vim.lsp.handlers["textDocument/publishDiagnostics"] = vim.lsp.with(
-					-- vim.lsp.diagnostic.on_publish_diagnostics, {
-					-- 	virtual_text = false,
-					-- })
+					for type, icon in pairs(signs) do
+						local hl = "DiagnosticSign" .. type
+						vim.fn.sign_define(hl, {
+							text = icon,
+							texthl = hl,
+							numhl = hl,
+						})
+					end
+					vim.opt.signcolumn = "no"
+					vim.opt.numberwidth = 4
 				end
 			end
-			diagnostical()
+			signwise(signs_active)
+
+			local diagnostics_active = true
+			local function diagnostical(active)
+				if active then
+					vim.diagnostic.enable()
+					vim.diagnostic.show()
+					signwise(signs_active)
+				else
+					signwise(false)
+					vim.diagnostic.disable()
+					vim.diagnostic.hide()
+				end
+			end
+			diagnostical(diagnostics_active)
 
 			local lsp_capabilities = require('cmp_nvim_lsp').default_capabilities()
 			local lsp_attach = function(client, bufnr)
-				local opts = { buffer = bufnr, remap = false }
+				local opts = {
+					buffer = bufnr,
+					remap = false,
+				}
+
+				-- add more of these from lsp-zero
 				vim.keymap.set("n", "gd", function() vim.lsp.buf.definition() end, opts)
 				vim.keymap.set("n", "K", function() vim.lsp.buf.hover() end, opts)
 				vim.keymap.set("n", "<leader>cws", function() vim.lsp.buf.workspace_symbol() end, opts)
 				vim.keymap.set("n", "<leader>cd", function() vim.diagnostic.open_float() end, opts)
 				vim.keymap.set('n', '<leader>cD', function()
 					diagnostics_active = not diagnostics_active
-					diagnostical()
+					diagnostical(diagnostics_active)
+				end)
+				vim.keymap.set('n', '<leader>cS', function()
+					signs_active = not signs_active
+					if diagnostics_active then
+						signwise(signs_active)
+					end
 				end)
 				vim.keymap.set("n", "]d", function() vim.diagnostic.goto_next() end, opts)
 				vim.keymap.set("n", "[d", function() vim.diagnostic.goto_prev() end, opts)
