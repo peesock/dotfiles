@@ -3,16 +3,9 @@
 
 setbg --stretch & # set background
 xrandr --dpi 102 # Set DPI.
-input.sh # fixes keyboard assshittery
+xorg.sh # fixes keyboard assshittery
 
 xrdb ${XDG_CONFIG_HOME:-$HOME/.config}/x11/xresources & xrdbpid=$!	# use Xresources colors/settings on startup
-
-xset s on
-xset s noblank # prevents monitor from shutting off (nvidia + monitor bug of mine), displays pattern instead (unless screen saver/locker is set)
-xset -dpms # disable dpms; i want to configure everything in my Xorg config
-
-xset s 900 10 # set screen saver/locker timeout
-xss-lock -n 'apock warn' -- apock &
 
 xsetroot -cursor_name left_ptr # ensures correct cursor on X root window
 

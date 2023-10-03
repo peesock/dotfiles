@@ -7,3 +7,10 @@ setxkbmap -option caps:escape,altwin:menu_win
 # Turn off caps lock if on since there is no longer a key for it.
 xset -q | grep "Caps Lock:\s*on" && xdotool key Caps_Lock
 xset r rate 300 50 # keyboard 300ms delay and 50hz repeat rate
+
+xset s on
+xset s noblank # prevents monitor from shutting off (nvidia + monitor bug of mine), displays pattern instead (unless screen saver/locker is set)
+xset -dpms # disable dpms; i want to configure everything in my Xorg config
+
+xset s 900 10 # set screen saver/locker timeout
+xss-lock -n 'apock warn' -- apock &
