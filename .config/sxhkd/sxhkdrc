@@ -72,8 +72,7 @@ super + p
 	passwords
 
 super + ctrl + p
-	killall keepassxc && notify-send -t 1000 "Killed keepassxc" || notify-send -t 1000 "kpxc error" ;\
-	killall keepmenu && notify-send -t 1000 "Killed keepmenu" || notify-send -t 1000 "kpmu error"
+	passwords -k
 
 # open dmenu with voicechat alsa config
 super + shift + d

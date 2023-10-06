@@ -26,7 +26,8 @@ mkdir -p "$pidDir"
 
 pre(){
 	# kill secret services: if someone unlocks my screen, at least they won't have my unencrypted passwords
-	( killall keepassxc keepmenu; sleep 3; killall -s 9 keepassxc keepmenu ) 2>/dev/null &
+	passwords -k -K -q 2>/dev/null &
+
 	dunstctl set-paused true
 	rm "$pidDir"/* 2>/dev/null
 }
