@@ -2,6 +2,7 @@
 
 # warn feature used with xss-lock
 if [ "$1" = "warn" ]; then
+	trap 'exit 0' TERM INT
 	i=$(xset q | grep cycle | awk '{print $4}')
 	while [ $i -gt 0 ]; do
 		t=1050
@@ -13,6 +14,8 @@ if [ "$1" = "warn" ]; then
 	sleep 2147483647 &
 	wait
 fi
+
+trap 'kill 0' TERM INT
 
 # lock arguments you'll always want
 alias lock='alock -a passwd'
