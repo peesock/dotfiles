@@ -98,11 +98,8 @@ super + {_, alt} + ctrl + s
 
 # lock screen
 super + shift + ctrl + l
-	if pgrep -x "xss-lock" >/dev/null ; then \
-		xset s activate ;\
-	else ;\
-		apock ;\
-	fi
+	apock
+
 # logout
 super + shift + ctrl + q
 	pkill -u $USER

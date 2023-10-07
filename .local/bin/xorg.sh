@@ -13,4 +13,4 @@ xset s noblank # prevents monitor from shutting off (nvidia + monitor bug of min
 xset -dpms # disable dpms; i shrimply don't want it
 
 xset s 900 15 # set screen saver/locker timeout
-setsid -f xss-lock -n 'apock warn' -- apock
+setsid -f xss-lock -n 'apock warn' -- apock xss

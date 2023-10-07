@@ -13,6 +13,15 @@ if [ "$1" = "warn" ]; then
 	done
 	sleep 2147483647 &
 	wait
+	elif [ "$1" = "xss" ]; then
+		xss=true
+fi
+
+programName=$(basename "$0")
+
+if ! [ $xss ] && ps -o command= $(pgrep -xn "xss-lock") | grep -- "--\s*$programName" >/dev/null; then
+	xset s activate
+	exit
 fi
 
 trap 'kill 0' TERM INT
@@ -21,7 +30,7 @@ trap 'kill 0' TERM INT
 alias lock='alock -a passwd'
 
 # for storing inaccesible variables
-pidDir="/tmp/$USER/$(basename "$0")"
+pidDir="/tmp/$USER/$programName"
 mkdir -p "$pidDir"
 
 pre(){
