@@ -9,8 +9,9 @@ help(){
 	programName=$(basename "$0")
 	echo "Run '$programName link PATH...' to hardlink everything under PATH to DOTDIR."
 	echo "'$programName g ...' will run git. Do '$programName g add PATH...' to add all existing hardlinks of PATH to the git repo."
-	echo "'add PATH...' will run both above commands."
-	# echo "Hardlink removal can be done with 'g rm'. If you have links that have not been added to git, you can run 'clean PATH..."
+	echo "'$programName add PATH...' will run both above commands."
+	echo "Hardlink removal can be done with '$programName g rm PATH...'."
+	echo "To remove both links of the file, run '$programName rm PATH...'." #If you have dot links that have not been added to git, you can run 'clean PATH...'"
 }
 
 dotpath()(
@@ -28,13 +29,13 @@ link()(
 	done
 )
 
-# unlink()(
-# 	for file in "$@"; do
-# 		path=$(dotpath "$file")
-# 		echo "removing '$path'" >&2
-# 		rm "$path"
-# 	done
-# )
+rm()(
+	for file in "$@"; do
+		path=$(dotpath "$file")
+		echo "removing '$file' and '$path'" >&2
+		/bin/rm -rI "$path" "$file"
+	done
+)
 
 add()(
 	link "$@"
