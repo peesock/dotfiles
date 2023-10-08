@@ -56,13 +56,4 @@ alias \
 	dash="rlwrap dash"
 
 	alias \
-	pubdot='git --git-dir=$HOME/.local/share/$USER/git/dotfiles/public' \
-	prvdot='git --git-dir=$HOME/.local/share/$USER/git/dotfiles/private' \
 	lf='lfpp'
-
-gidots(){
-	printf "PUBLIC:\n"
-	pubdot "$@"
-	printf "\n\nPRIVATE:\n"
-	prvdot "$@"
-}

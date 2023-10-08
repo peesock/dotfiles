@@ -1,0 +1,66 @@
+#!/bin/sh
+
+dotDir="$HOME/.dotfiles" # default
+workingDir="$HOME"
+
+dotDir="$HOME/code/repo/dotfiles"
+
+help(){
+	programName=$(basename "$0")
+	echo "Run '$programName link PATH...' to hardlink everything under PATH to DOTDIR."
+	echo "'$programName g ...' will run git. Do '$programName g add PATH...' to add all existing hardlinks of PATH to the git repo."
+	echo "'add PATH...' will run both above commands."
+	# echo "Hardlink removal can be done with 'g rm'. If you have links that have not been added to git, you can run 'clean PATH..."
+}
+
+dotpath()(
+	f=$(realpath -- "$1")
+	f=${f#"$dotDir"}
+	echo "$dotDir${f#"$workingDir"}"
+)
+
+link()(
+	for file in "$@"; do
+		path=$(dotpath "$file")
+		mkdir -p "$(dirname -- "$path")"
+		echo "linking '$file' to '$path'" >&2
+		cp -rfl "$file" "$path"
+	done
+)
+
+# unlink()(
+# 	for file in "$@"; do
+# 		path=$(dotpath "$file")
+# 		echo "removing '$path'" >&2
+# 		rm "$path"
+# 	done
+# )
+
+add()(
+	link "$@"
+	g add "$@"
+)
+
+g(){
+	# shellcheck disable=SC2046
+	eval 'git --git-dir="$dotDir/.git" --work-tree="$dotDir" '$(
+	# if any args are files, ensure they come from $workingDir.
+		i=1
+		for arg in "$@"; do
+			# ensure --option arguments are seen as options, not files
+			echo "$arg" | grep -- '^-\?-[^-]' >/dev/null && # fixme: add 'command args -- files' support
+				i=$((i - 1))
+			if [ -f "$arg" ] && [ $i -gt 1 ]; then
+				arg=$(dotpath "$arg")
+			fi
+			echo "'$arg'"
+			i=$((i + 1))
+		done
+	)''
+}
+
+init(){
+	git init "$dotDir"
+}
+
+"$@"
