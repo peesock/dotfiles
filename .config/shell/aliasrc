@@ -56,4 +56,5 @@ alias \
 	dash="rlwrap dash"
 
 	alias \
-	lf='lfpp'
+	lf='lfpp' \
+	dt='dt -d $HOME/code/repo/dotfiles'

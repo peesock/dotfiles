@@ -32,15 +32,17 @@ _comp_options+=(globdots)		# Include hidden files.
 
 # add autocomplete for special aliases
 _dt () {
-	if [ "$words[2]" = "g" ]; then
-		shift words
-		(( CURRENT-- ))
-		# idk how to run _git properly
-		words[1]="git"
-		_normal
-	else
+	for ((i=0; i < $CURRENT; i++)); do
+		if [ "${words[i]}" = "g" ]; then
+			words[i]="git"
+			shift $((i - 1)) words
+			(( CURRENT = i-1 ))
+			# idk how to run _git properly
+			_normal
+			return
+		fi
+	done
 	_files
-	fi
 }
 compdef _dt dt
 

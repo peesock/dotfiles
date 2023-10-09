@@ -2,11 +2,23 @@
 
 dotDir="$HOME/.dotfiles" # default
 workingDir="$HOME"
+programName=$(basename "$0")
 
-dotDir="$HOME/code/repo/dotfiles"
+while true; do
+	[ "$1" = -d ] && {
+		dotDir="$2"
+		shift 2
+		continue
+	}
+	[ "$1" = -w ] && {
+		workingDir="$2"
+		shift 2
+		continue
+	}
+	break
+done
 
 help(){
-	programName=$(basename "$0")
 	echo "Run '$programName link PATH...' to hardlink everything under PATH to DOTDIR."
 	echo "'$programName g ...' will run git. Do '$programName g add PATH...' to add all existing hardlinks of PATH to the git repo."
 	echo "'$programName add PATH...' will run both above commands."
@@ -14,10 +26,20 @@ help(){
 	echo "To remove both links of the file, run '$programName rm PATH...'." #If you have dot links that have not been added to git, you can run 'clean PATH...'"
 }
 
+# todo: add restore option using reverse dotpath
 dotpath()(
-	f=$(realpath -- "$1")
-	f=${f#"$dotDir"}
-	echo "$dotDir${f#"$workingDir"}"
+	for file in "$@"; do
+		file=$(realpath -m -- "$file") # calling this once for every file sucks but so does shell
+		[ "$file" = "${file#"$workingDir"}" ] && {
+			echo "error: '$file' above working dir" >&2
+			exit=1
+			continue
+		}
+		exit=0
+		file=${file#"$dotDir"} # resolve any paths to dotdir
+		echo "$dotDir${file#"$workingDir"}"
+	done
+	return $exit
 )
 
 link()(
@@ -48,11 +70,17 @@ g(){
 	# if any args are files, ensure they come from $workingDir.
 		i=1
 		for arg in "$@"; do
-			# ensure --option arguments are seen as options, not files
-			echo "$arg" | grep -- '^-\?-[^-]' >/dev/null && # fixme: add 'command args -- files' support
-				i=$((i - 1))
-			if [ -f "$arg" ] && [ $i -gt 1 ]; then
-				arg=$(dotpath "$arg")
+			# ensure --option arguments are not seen as files
+			[ $files ] || {
+				[ "$arg" = "--" ] && files=true && continue
+			}
+			[ $files ] ||
+				echo "$arg" | grep -- '^-\?-[^-]' >/dev/null && {
+					i=$((i - 1))
+				}
+			if [ $files ] || [ -f "$arg" ] && [ $i -gt 1 ]; then
+				arg=$(dotpath "$arg") ||
+					continue
 			fi
 			echo "'$arg'"
 			i=$((i + 1))
@@ -61,7 +89,13 @@ g(){
 }
 
 init(){
+	mkdir -p "$dotDir"
 	git init "$dotDir"
 }
 
-"$@"
+if type "$1" | grep -iF "shell function" >/dev/null; then
+	"$@"
+else
+	echo "Run '$programName help' for quick options or see '$0' for all functions."
+	exit 1
+fi

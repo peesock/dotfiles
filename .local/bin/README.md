@@ -7,10 +7,13 @@ Dependencies:
 - $TERMINAL / alacritty
 - cli-visualizer
 
-`5wock` to lock, `5wock warn` to sleep for XORG_SCREENSAVER_CYCLE seconds and hang.
-
 If you have that music visualizer, it will be displayed.
 
+Use `apock` to lock from cli
+Use `apock xss` and `apock warn` with xss-lock, like
+```
+xss-lock -n 'apock warn' -- apock xss'
+```
 
 
 # basicrop
@@ -36,18 +39,66 @@ Usage: `basicrop [INFILE] [OUTFILE]`. If OUTFILE isn't specified, INFILE will al
 - 'Return' to save file
 - 'shift' + 'Return' to overwrite file
 
-Because there's no way to communicate the image's location to the script, you cannot zoom in or translate. sorry!!!!
+Because there's no way to communicate the image's location to the script, you cannot zoom in or translate.
 
 ## how
 `basicrop input output` will open `input` in fullscreen mode. With your screen dimensions, this acts like a ruler by constraining the sides of your image to the sides of the screen. Cropping will simply take the dimensions of the screen captured in an area, and scale it up or down to the size of the image. Those dimensions are trimmed if needed, and then fed to graphicsmagick to produce `output`.
 
-sxhkd is used to temporarily steal a set of keys from your keyboard to use for the script. I'm sure there's a way to do it with more simple X tools, but if i wanted to make this more of a PITA then i would've make a Real image editor in C, with zooming and translating and drawing and such. But i didn't feel like it
+sxhkd is used to temporarily steal a set of keys from your keyboard to use for the script. I'm sure there's a way to do it with more simple X tools, but if i wanted to make this more of a PITA then i would've make a Real image editor in C, with zooming and translating and drawing and such, but i didn't feel like it.
 
-## why
-I had all the tools on my system, and a brand new screenshot script in need of an editor. Actually, this used to be embedded into that screenshot script until i decided to split it up.
 
-In the future I'll make a real editor.
 
+# dt
+My dotfile management script. It uses hardlinks instead of symlinks to manage the repo, following the argument of [this blogpost](https://port19.xyz/tech/hardlinks/).
+
+## usage
+dt currently has 7 functions:
+- init: run git init on $dotDir
+- link: recursively hardlink all arguments to $dotDir (requires GNU cp)
+- add: run link and git add on all arguments
+- rm: permanently and recursively remove *both* hardlinks (and folders) of argument
+- g: runs git with modified options and file paths to change the dot repo
+- dotpath: used internally, returns what would be the git path of the path specified
+- help: helps
+
+The default dot directory and working directory are ~/.dotfiles and ~, respectively.
+They can be changed with the `-d` and `-w` flags.
+To simplify this, you could use aliases or edit the defaults directly.
+
+## examples
+normal usage:
+```
+$ dt init
+Initialized empty Git repository in /home/user/.dotfiles/.git/
+
+$ dt add .config/alacritty .config/kitty
+linking '.config/alacritty' to '/home/user/.dotfiles/.config/alacritty'
+linking '.config/kitty' to '/home/user/.dotfiles/.config/kitty'
+
+$ dt g status
+On branch master
+
+No commits yet
+
+Changes to be committed:
+  (use "git rm --cached <file>..." to unstage)
+	new file:   .config/alacritty/alacritty.yml
+	new file:   .config/kitty/kitty.conf
+
+$ dt g commit -m "my beloved files"
+$ dt g rm .config/alacritty
+$ dt g commit -m "i hate alacritty"
+$ dt rm .config/kitty/kitty.conf
+removing '.config/kitty/kitty.conf' and '/home/apoc/.dotfiles/.config/kitty/kitty.conf'
+/bin/rm: remove 2 arguments recursively? y
+
+$ dt g commit -m "i HATE kitty"
+```
+adding extra files without cluttering your home directory:
+`$ dt g add ~/.dotfiles/README.md`
+
+
+Also see my ~/.zshrc to add git autocomplete.
 
 
 # maptoggle.sh
