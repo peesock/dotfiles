@@ -52,17 +52,18 @@ sxhkd is used to temporarily steal a set of keys from your keyboard to use for t
 My dotfile management script. It uses hardlinks instead of symlinks to manage the repo, following the argument of [this blogpost](https://port19.xyz/tech/hardlinks/).
 
 ## usage
-dt currently has 7 functions:
-- init: run git init on $dotDir
-- link: recursively hardlink all arguments to $dotDir (requires GNU cp)
+dt currently has 8 functions:
+- init: run git init on git dir
+- link: recursively hardlink all arguments to git dir (requires GNU cp)
+- restore: runs link in reverse, restoring your dotfiles from the git repo
 - add: run link and git add on all arguments
-- rm: permanently and recursively remove *both* hardlinks (and folders) of argument
+- rm: recursively remove *both* existing hardlinks (and folders) of argument
 - g: runs git with modified options and file paths to change the dot repo
-- dotpath: used internally, returns what would be the git path of the path specified
 - help: helps
+- dotpath: returns either the git (default) or working (-R) path of specified argument
 
 The default dot directory and working directory are ~/.dotfiles and ~, respectively.
-They can be changed with the `-d` and `-w` flags.
+They can be changed with the `-g` and `-w` flags.
 To simplify this, you could use aliases or edit the defaults directly.
 
 ## examples

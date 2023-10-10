@@ -1,12 +1,33 @@
 #!/bin/sh
 
-dotDir="$HOME/.dotfiles" # default
+gitDir="$HOME/.dotfiles" # default
 workingDir="$HOME"
 programName=$(basename "$0")
 
+help(){
+	printf %s "\
+usage:
+$programName [OPTIONS] FUNCTION [ARGS]
+
+options:
+-g dir       set git directory to dir (default '$gitDir')
+-w dir       set working directory to dir (default '$workingDir')
+
+functions:
+init         run git init on git dir
+link         recursively hardlink all arguments to git dir (requires GNU cp)
+restore      runs link in reverse, restoring your dotfiles from the git repo
+add          run link and git add on all arguments
+rm           recursively remove *both* existing hardlinks (and folders) of argument
+g            runs git with modified options and file paths to change the dot repo
+help         helps
+dotpath      returns either the git (default) or working (-R) path of specified argument
+"
+}
+
 while true; do
-	[ "$1" = -d ] && {
-		dotDir="$2"
+	[ "$1" = -g ] && {
+		gitDir="$2"
 		shift 2
 		continue
 	}
@@ -18,36 +39,53 @@ while true; do
 	break
 done
 
-help(){
-	echo "Run '$programName link PATH...' to hardlink everything under PATH to DOTDIR."
-	echo "'$programName g ...' will run git. Do '$programName g add PATH...' to add all existing hardlinks of PATH to the git repo."
-	echo "'$programName add PATH...' will run both above commands."
-	echo "Hardlink removal can be done with '$programName g rm PATH...'."
-	echo "To remove both links of the file, run '$programName rm PATH...'." #If you have dot links that have not been added to git, you can run 'clean PATH...'"
-}
+unset reverse restore
 
-# todo: add restore option using reverse dotpath
 dotpath()(
+	[ "$1" = "-R" ] && reverse=true && shift
+	[ "$1" = '--' ] && shift
 	for file in "$@"; do
 		file=$(realpath -m -- "$file") # calling this once for every file sucks but so does shell
-		[ "$file" = "${file#"$workingDir"}" ] && {
+		fileWorking=${file#"$workingDir"}
+		fileGit=${file#"$gitDir"}
+
+		if [ "$file" != "$fileGit" ]; then
+			# we are in the dots folder.
+			[ $reverse ] &&
+			echo "$workingDir$fileGit" ||
+			echo "$gitDir$fileGit"
+
+		elif [ "$file" != "$fileWorking" ] && [ "$file" = "$fileGit" ]; then
+			# we are in the home folder.
+			[ $reverse ] &&
+			echo "$workingDir$fileWorking" ||
+			echo "$gitDir$fileWorking"
+
+		else
 			echo "error: '$file' above working dir" >&2
 			exit=1
 			continue
-		}
+		fi
+
 		exit=0
-		file=${file#"$dotDir"} # resolve any paths to dotdir
-		echo "$dotDir${file#"$workingDir"}"
 	done
 	return $exit
 )
 
 link()(
-	for file in "$@"; do
-		path=$(dotpath "$file")
-		mkdir -p "$(dirname -- "$path")"
-		echo "linking '$file' to '$path'" >&2
-		cp -rfl "$file" "$path"
+	[ "$1" = "-R" ] && restore=1 && shift
+	[ "$1" = '--' ] && shift
+	for infile in "$@"; do
+		if [ $restore ]; then
+			infile=$(dotpath "$infile")
+			outfile=$(dotpath -R -- "$infile")
+		else
+
+			outfile=$(dotpath "$infile")
+		fi
+		mkdir -p "$outfile"
+		echo "linking '$infile' to '$outfile'" >&2
+		cp -rflT $([ $restore ] && echo '-i') "$infile" "$outfile"
 	done
 )
 
@@ -64,9 +102,13 @@ add()(
 	g add "$@"
 )
 
+restore()(
+	link -R -- "$@"
+)
+
 g(){
 	# shellcheck disable=SC2046
-	eval 'git --git-dir="$dotDir/.git" --work-tree="$dotDir" '$(
+	eval 'git --git-dir="$gitDir/.git" --work-tree="$gitDir" '$(
 	# if any args are files, ensure they come from $workingDir.
 		i=1
 		for arg in "$@"; do
@@ -89,8 +131,8 @@ g(){
 }
 
 init(){
-	mkdir -p "$dotDir"
-	git init "$dotDir"
+	mkdir -p "$gitDir"
+	git init "$gitDir"
 }
 
 if type "$1" | grep -iF "shell function" >/dev/null; then
