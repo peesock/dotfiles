@@ -75,7 +75,7 @@ link()(
 
 			outfile=$(dotpath "$infile")
 		fi
-		mkdir -p "$outfile"
+		mkdir -p "$(dirname "$outfile")"
 		echo "linking '$infile' to '$outfile'" >&2
 		cp -rflT $([ $restore ] && echo '-i') "$infile" "$outfile"
 	done
