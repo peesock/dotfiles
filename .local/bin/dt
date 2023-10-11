@@ -4,14 +4,14 @@ gitDir="$HOME/.dotfiles" # default
 workingDir="$HOME"
 programName=$(basename "$0")
 
-help(){
+eval 'help(){
 	printf %s "\
 usage:
-$programName [OPTIONS] FUNCTION [ARGS]
+'$programName' [OPTIONS] FUNCTION [ARGS]
 
 options:
--g dir       set git directory to dir (default '$gitDir')
--w dir       set working directory to dir (default '$workingDir')
+-g dir       set git directory to dir (default '\'$gitDir\'')
+-w dir       set working directory to dir (default '\'$workingDir\'')
 
 functions:
 init         run git init on git dir
@@ -19,29 +19,18 @@ link         recursively hardlink all arguments to git dir (requires GNU cp)
 restore      runs link in reverse, restoring your dotfiles from the git repo
 add          run link and git add on all arguments
 rm           recursively remove *both* existing hardlinks (and folders) of argument
+run          run arguments as if you were in the git repo (if outside, defaults to top)
 g            runs git with modified options and file paths to change the dot repo
 help         helps
 dotpath      returns either the git (default) or working (-R) path of specified argument
 "
 }
-
-while true; do
-	[ "$1" = -g ] && {
-		gitDir="$2"
-		shift 2
-		continue
-	}
-	[ "$1" = -w ] && {
-		workingDir="$2"
-		shift 2
-		continue
-	}
-	break
-done
+'
 
 unset reverse restore
 
 dotpath()(
+	[ "$1" = "-d" ] && default=true && shift
 	[ "$1" = "-R" ] && reverse=true && shift
 	[ "$1" = '--' ] && shift
 	for file in "$@"; do
@@ -62,9 +51,12 @@ dotpath()(
 			echo "$gitDir$fileWorking"
 
 		else
-			echo "error: '$file' above working dir" >&2
-			exit=1
-			continue
+			[ $default ] || {
+				echo "error: '$file' outside working dir" >&2
+				exit=1
+				continue
+			}
+			echo "$gitDir"
 		fi
 
 		exit=0
@@ -73,7 +65,7 @@ dotpath()(
 )
 
 link()(
-	[ "$1" = "-R" ] && restore=1 && shift
+	[ "$1" = "-R" ] && restore=true && shift
 	[ "$1" = '--' ] && shift
 	for infile in "$@"; do
 		if [ $restore ]; then
@@ -89,6 +81,15 @@ link()(
 	done
 )
 
+restore()(
+	link -R -- "$@"
+)
+
+add()(
+	link "$@"
+	g add "$@"
+)
+
 rm()(
 	for file in "$@"; do
 		path=$(dotpath "$file")
@@ -97,43 +98,33 @@ rm()(
 	done
 )
 
-add()(
-	link "$@"
-	g add "$@"
+run()(
+	cd "$(dotpath -d -- "$PWD")" || exit
+	"$@"
 )
 
-restore()(
-	link -R -- "$@"
+g()(
+	run git --git-dir="$gitDir/.git" --work-tree="$gitDir" "$@"
 )
-
-g(){
-	# shellcheck disable=SC2046
-	eval 'git --git-dir="$gitDir/.git" --work-tree="$gitDir" '$(
-	# if any args are files, ensure they come from $workingDir.
-		i=1
-		for arg in "$@"; do
-			# ensure --option arguments are not seen as files
-			[ $files ] || {
-				[ "$arg" = "--" ] && files=true && continue
-			}
-			[ $files ] ||
-				echo "$arg" | grep -- '^-\?-[^-]' >/dev/null && {
-					i=$((i - 1))
-				}
-			if [ $files ] || [ -f "$arg" ] && [ $i -gt 1 ]; then
-				arg=$(dotpath "$arg") ||
-					continue
-			fi
-			echo "'$arg'"
-			i=$((i + 1))
-		done
-	)''
-}
 
 init(){
 	mkdir -p "$gitDir"
 	git init "$gitDir"
 }
+
+while true; do
+	[ "$1" = -g ] && {
+		gitDir="$2"
+		shift 2
+		continue
+	}
+	[ "$1" = -w ] && {
+		workingDir="$2"
+		shift 2
+		continue
+	}
+	break
+done
 
 if type "$1" | grep -iF "shell function" >/dev/null; then
 	"$@"
