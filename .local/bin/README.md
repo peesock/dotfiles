@@ -53,14 +53,15 @@ My dotfile management script. It uses hardlinks instead of symlinks to manage th
 
 ## usage
 dt currently has 8 functions:
-- init: run git init on git dir
-- link: recursively hardlink all arguments to git dir (requires GNU cp)
-- restore: runs link in reverse, restoring your dotfiles from the git repo
-- add: run link and git add on all arguments
-- rm: recursively remove *both* existing hardlinks (and folders) of argument
-- g: runs git with modified options and file paths to change the dot repo
-- help: helps
-- dotpath: returns either the git (default) or working (-R) path of specified argument
+- init - run git init on git dir
+- link - recursively hardlink all arguments to git dir (requires GNU cp)
+- restore - runs link in reverse, restoring your dotfiles from the git repo
+- add - run link and git add on all arguments
+- rm - recursively remove *both* existing hardlinks (and folders) of argument
+- run - run arguments as if you were in the git repo (if outside, defaults to top)
+- g - runs git with modified options and file paths to change the dot repo
+- help - helps
+- dotpath - returns either the git (default) or working (-R) path of specified argument
 
 The default dot directory and working directory are ~/.dotfiles and ~, respectively.
 They can be changed with the `-g` and `-w` flags.

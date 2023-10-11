@@ -33,14 +33,22 @@ _comp_options+=(globdots)		# Include hidden files.
 # add autocomplete for special aliases
 _dt () {
 	for ((i=0; i < $CURRENT; i++)); do
-		if [ "${words[i]}" = "g" ]; then
-			words[i]="git"
-			shift $((i - 1)) words
-			(( CURRENT = i-1 ))
-			# idk how to run _git properly
-			_normal
-			return
-		fi
+		case "${words[i]}" in
+			g)
+				# idk how to run _git properly
+				words[i]="git"
+				shift $((i - 1)) words
+				(( CURRENT -= (i-1) ))
+				_complete
+				return
+				;;
+			run)
+				shift $i words
+				(( CURRENT -= i ))
+				_complete
+				return
+				;;
+		esac
 	done
 	_files
 }
