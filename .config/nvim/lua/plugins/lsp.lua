@@ -76,6 +76,14 @@ return {
 			end
 			diagnostical(diagnostics_active)
 
+			vim.lsp.handlers["textDocument/hover"] = vim.lsp.with(vim.lsp.handlers.hover, {
+				border = "rounded",
+			})
+
+			vim.lsp.handlers["textDocument/signatureHelp"] = vim.lsp.with(vim.lsp.handlers.signature_help, {
+				border = "rounded",
+			})
+
 			local lsp_capabilities = require('cmp_nvim_lsp').default_capabilities()
 			local lsp_attach = function(client, bufnr)
 				local opts = {
@@ -83,27 +91,32 @@ return {
 					remap = false,
 				}
 
-				-- add more of these from lsp-zero
-				vim.keymap.set("n", "gd", function() vim.lsp.buf.definition() end, opts)
-				vim.keymap.set("n", "K", function() vim.lsp.buf.hover() end, opts)
-				vim.keymap.set("n", "<leader>cws", function() vim.lsp.buf.workspace_symbol() end, opts)
-				vim.keymap.set("n", "<leader>cd", function() vim.diagnostic.open_float() end, opts)
-				vim.keymap.set('n', '<leader>cD', function()
+				-- vim.keymap.set('x', '<Leader>' .. suffix, rhs, { desc = desc })
+				-- add window border around hover
+				mapper("n", "K", function() vim.lsp.buf.hover() end, "", opts)
+				mapper("n", "gd", function() vim.lsp.buf.definition() end, "Definition", opts)
+				mapper("n", "gD", function() vim.lsp.buf.declaration() end, "Declaration", opts)
+				mapper("n", "]d", function() vim.diagnostic.goto_next() end, "Next diagnostic", opts)
+				mapper("n", "[d", function() vim.diagnostic.goto_prev() end, "Prev diagnostic", opts)
+				mapper("n", "<leader>ci", function() vim.lsp.buf.implementation() end, "Implementation", opts)
+				mapper("n", "<leader>ct", function() vim.lsp.buf.type_definition() end, "Type definition", opts)
+				mapper("n", "<leader>cs", function() vim.lsp.buf.workspace_symbol() end, "Symbol", opts)
+				mapper("n", "<leader>cd", function() vim.diagnostic.open_float() end, "Diagnostic", opts)
+				mapper("n", "<leader>ca", function() vim.lsp.buf.code_action() end, "Action", opts)
+				mapper("n", "<leader>cr", function() vim.lsp.buf.references() end, "References", opts)
+				mapper("n", "<leader>cn", function() vim.lsp.buf.rename() end, "Rename", opts)
+				mapper("n", "<leader>cf", function() vim.lsp.buf.format() end, "Format", opts)
+				mapper("i", "<C-h>", function() vim.lsp.buf.signature_help() end, "Signature help", opts)
+				mapper('n', '<leader>cD', function()
 					diagnostics_active = not diagnostics_active
 					diagnostical(diagnostics_active)
-				end)
-				vim.keymap.set('n', '<leader>cS', function()
+				end, "Toggle diagnostics", opts)
+				mapper('n', '<leader>cS', function()
 					signs_active = not signs_active
 					if diagnostics_active then
 						signwise(signs_active)
 					end
-				end)
-				vim.keymap.set("n", "]d", function() vim.diagnostic.goto_next() end, opts)
-				vim.keymap.set("n", "[d", function() vim.diagnostic.goto_prev() end, opts)
-				vim.keymap.set("n", "<leader>ca", function() vim.lsp.buf.code_action() end, opts)
-				vim.keymap.set("n", "<leader>crr", function() vim.lsp.buf.references() end, opts)
-				vim.keymap.set("n", "<leader>crn", function() vim.lsp.buf.rename() end, opts)
-				vim.keymap.set("i", "<C-h>", function() vim.lsp.buf.signature_help() end, opts)
+				end, "Toggle signs", opts)
 			end
 
 			local lspconfig = require('lspconfig')

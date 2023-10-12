@@ -7,6 +7,7 @@ function ColorMyPencils(color)
 	vim.api.nvim_set_hl(0, "NormalFloat", { bg = "none" })
 	vim.api.nvim_set_hl(0, "FloatBorder", { fg = "white" })
 	vim.api.nvim_set_hl(0, "DiagnosticInfo", { sp = "none" })
+	-- #123456
 
 	-- remove text highlighting but not underlighting of diagnostics
 	for _, value in pairs({"Ok", "Hint", "Info", "Warn", "Error",}) do

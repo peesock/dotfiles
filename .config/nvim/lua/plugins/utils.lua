@@ -1,5 +1,189 @@
 return {
 	{
+		'echasnovski/mini.nvim', version = false,
+		config = function()
+			require('mini.ai').setup()
+			require('mini.align').setup({
+				mappings = {
+					start = 'gA',
+				},
+			})
+			local miniclue = require('mini.clue')
+			miniclue.setup({
+				triggers = {
+					-- Leader triggers
+					{ mode = 'n', keys = '<Leader>' },
+					{ mode = 'x', keys = '<Leader>' },
+
+					-- Built-in completion
+					{ mode = 'i', keys = '<C-x>' },
+
+					-- `g` key
+					{ mode = 'n', keys = 'g' },
+					{ mode = 'x', keys = 'g' },
+
+					-- Marks
+					{ mode = 'n', keys = "'" },
+					{ mode = 'n', keys = '`' },
+					{ mode = 'x', keys = "'" },
+					{ mode = 'x', keys = '`' },
+
+					-- Registers
+					{ mode = 'n', keys = '"' },
+					{ mode = 'x', keys = '"' },
+					{ mode = 'i', keys = '<C-r>' },
+					{ mode = 'c', keys = '<C-r>' },
+
+					-- Window commands
+					{ mode = 'n', keys = '<C-w>' },
+
+					-- `z` key
+					{ mode = 'n', keys = 'z' },
+					{ mode = 'x', keys = 'z' },
+				},
+
+				clues = {
+					-- Enhance this by adding descriptions for <Leader> mapping groups
+					miniclue.gen_clues.builtin_completion(),
+					miniclue.gen_clues.g(),
+					miniclue.gen_clues.marks(),
+					miniclue.gen_clues.registers(),
+					miniclue.gen_clues.windows(),
+					miniclue.gen_clues.z(),
+				},
+			})
+			require('mini.bufremove').setup()
+			require('mini.comment').setup({
+				-- Options which control module behavior
+				options = {
+					-- Function to compute custom 'commentstring' (optional)
+					custom_commentstring = nil,
+					ignore_blank_line = true,
+					-- Whether to recognize as comment only lines without indent
+					start_of_line = false,
+					-- Whether to ensure single space pad for comment parts
+					pad_comment_parts = true,
+				},
+
+				-- Module mappings. Use `''` (empty string) to disable one.
+				mappings = {
+					comment = 'gc',
+					comment_line = 'gcc',
+					-- Define 'comment' textobject (like `dgc` - delete whole comment block)
+					textobject = 'gc',
+				},
+
+				-- Hook functions to be executed at certain stage of commenting
+				hooks = {
+					-- Before successful commenting. Does nothing by default.
+					pre = function() end,
+					-- After successful commenting. Does nothing by default.
+					post = function() end,
+				},
+
+			})
+			vim.keymap.set('n', 'gco', 'o.<Esc>gcc$s', { remap = true, })
+			vim.keymap.set('n', 'gcO', 'O.<Esc>gcc$s', { remap = true, })
+			vim.keymap.set('n', 'gcA', 'o.<Esc>gcckJ$s', { remap = true, })
+			require('mini.indentscope').setup({
+				-- Draw options
+				draw = {
+					delay = 0,
+					animation = require('mini.indentscope').gen_animation.none(),
+					priority = 2,
+				},
+
+				-- Module mappings. Use `''` (empty string) to disable one.
+				mappings = {
+					-- Textobjects
+					object_scope = 'ii',
+					object_scope_with_border = 'ai',
+
+					-- Motions (jump to respective border line; if not present - body line)
+					goto_top = '[i',
+					goto_bottom = ']i',
+				},
+
+				-- Options which control scope computation
+				options = {
+					-- Type of scope's border: which line(s) with smaller indent to
+					-- categorize as border. Can be one of: 'both', 'top', 'bottom', 'none'.
+					border = 'both',
+
+					-- Whether to use cursor column when computing reference indent.
+					-- Useful to see incremental scopes with horizontal cursor movements.
+					indent_at_cursor = true,
+
+					-- Whether to first check input line to be a border of adjacent scope.
+					-- Use it if you want to place cursor on function header to get scope of
+					-- its body.
+					try_as_border = true,
+				},
+
+				-- │ ╎ ┆ ┊
+				-- Which character to use for drawing scope indicator
+				symbol = '│',
+
+			})
+			local hipatterns = require('mini.hipatterns')
+			hipatterns.setup({
+				highlighters = {
+					-- Highlight standalone 'FIXME', 'HACK', 'TODO', 'NOTE'
+					fixme = { pattern = '%f[%w]()FIXME()%f[%W]', group = 'MiniHipatternsFixme' },
+					hack  = { pattern = '%f[%w]()HACK()%f[%W]',  group = 'MiniHipatternsHack'  },
+					todo  = { pattern = '%f[%w]()TODO()%f[%W]',  group = 'MiniHipatternsTodo'  },
+					note  = { pattern = '%f[%w]()NOTE()%f[%W]',  group = 'MiniHipatternsNote'  },
+					-- Highlight hex color strings (`#rrggbb`) using that color
+					hex_color = hipatterns.gen_highlighter.hex_color(),
+				},
+			})
+			require('mini.pairs').setup()
+			vim.g.minipairs_disable = true
+			vim.keymap.set('n', '<leader>a', function()
+				vim.g.minipairs_disable = not vim.g.minipairs_disable
+				if vim.g.minipairs_disable then
+					print 'autopairs disabled'
+				else
+					print 'autopairs enabled'
+				end
+			end, { desc = 'Toggle autopairs'})
+			require('mini.move').setup({
+				-- Module mappings. Use `''` (empty string) to disable one.
+				mappings = {
+					-- Move visual selection in Visual mode. Defaults are Alt (Meta) + hjkl.
+					left = 'H',
+					right = 'L',
+					down = 'J',
+					up = 'K',
+					-- Move current line in Normal mode
+					line_left = '',
+					line_right = '',
+					line_down = '',
+					line_up = '',
+				},
+
+				-- Options which control moving behavior
+				options = {
+					-- Automatically reindent selection during linewise vertical move
+					reindent_linewise = true,
+				},
+			})
+			require('mini.jump').setup({
+				-- Delay values (in ms) for different functionalities. Set any of them to
+				-- a very big number (like 10^7) to virtually disable.
+				delay = {
+					-- Delay between jump and highlighting all possible jumps
+					highlight = 250,
+
+					-- Delay between jump and automatic stop if idle (no jump is done)
+					idle_stop = 0,
+				},
+			})
+			-- mini.jump2d :flushed:
+		end,
+	},
+
+	{
 		"andymass/vim-matchup",
 		config = function()
 
@@ -21,137 +205,16 @@ return {
 	},
 
 	{
-		"numToStr/Comment.nvim",
-		opts = {
-			---Add a space b/w comment and the line
-			padding = true,
-			---Whether the cursor should stay at its position
-			sticky = true,
-			---Lines to be ignored while (un)comment
-			ignore = nil,
-			---LHS of toggle mappings in NORMAL mode
-			toggler = {
-				---Line-comment toggle keymap
-				line = 'gcc',
-				---Block-comment toggle keymap
-				block = 'gbc',
-			},
-			---LHS of operator-pending mappings in NORMAL and VISUAL mode
-			opleader = {
-				---Line-comment keymap
-				line = 'gc',
-				---Block-comment keymap
-				block = 'gb',
-			},
-			---LHS of extra mappings
-			extra = {
-				---Add comment on the line above
-				above = 'gcO',
-				---Add comment on the line below
-				below = 'gco',
-				---Add comment at the end of line
-				eol = 'gcA',
-			},
-			---Enable keybindings
-			---NOTE: If given `false` then the plugin won't create any mappings
-			mappings = {
-				---Operator-pending mapping; `gcc` `gbc` `gc[count]{motion}` `gb[count]{motion}`
-				basic = true,
-				---Extra mapping; `gco`, `gcO`, `gcA`
-				extra = true,
-			},
-			---Function to call before (un)comment
-			pre_hook = nil,
-			---Function to call after (un)comment
-			post_hook = nil,
-		}
-	},
-
-	{
-		"folke/which-key.nvim",
-		config = function()
-			-- vim.o.timeout = true
-			-- vim.o.timeoutlen = 400
-			require("which-key").setup({
-				plugins = {
-					marks = true, -- shows a list of your marks on ' and `
-					registers = true, -- shows your registers on " in NORMAL or <C-r> in INSERT mode
-					spelling = {
-						enabled = false, -- enabling this will show WhichKey when pressing z= to select spelling suggestions
-						suggestions = 20, -- how many suggestions should be shown in the list?
-					},
-					-- the presets plugin, adds help for a bunch of default keybindings in Neovim
-					-- No actual key bindings are created
-					presets = {
-						operators = true, -- adds help for operators like d, y, ... and registers them for motion / text object completion
-						motions = true, -- adds help for motions
-						text_objects = true, -- help for text objects triggered after entering an operator
-						windows = true, -- default bindings on <c-w>
-						nav = true, -- misc bindings to work with windows
-						z = true, -- bindings for folds, spelling and others prefixed with z
-						g = true, -- bindings for prefixed with g
-					},
-				},
-				-- add operators that will trigger motion and text object completion
-				-- to enable all native operators, set the preset / operators plugin above
-				operators = { gc = "Comments" },
-				key_labels = {
-					-- override the label used to display some keys. It doesn't effect WK in any other way.
-					-- For example:
-					-- ["<space>"] = "SPC",
-					-- ["<cr>"] = "RET",
-					-- ["<tab>"] = "TAB",
-				},
-				icons = {
-					breadcrumb = "»", -- symbol used in the command line area that shows your active key combo
-					separator = "➜", -- symbol used between a key and it's label
-					group = "+", -- symbol prepended to a group
-				},
-				popup_mappings = {
-					scroll_down = "<c-d>", -- binding to scroll down inside the popup
-					scroll_up = "<c-u>", -- binding to scroll up inside the popup
-				},
-				window = {
-					border = "none", -- none, single, double, shadow
-					position = "bottom", -- bottom, top
-					margin = { 1, 0, 1, 0 }, -- extra window margin [top, right, bottom, left]
-					padding = { 2, 2, 2, 2 }, -- extra window padding [top, right, bottom, left]
-					winblend = 0,
-				},
-				layout = {
-					height = { min = 4, max = 25 }, -- min and max height of the columns
-					width = { min = 20, max = 50 }, -- min and max width of the columns
-					spacing = 3, -- spacing between columns
-					align = "left", -- align columns left, center or right
-				},
-				ignore_missing = false, -- enable this to hide mappings for which you didn't specify a label
-				hidden = { "<silent>", "<cmd>", "<Cmd>", "<CR>", "call", "lua", "^:", "^ " }, -- hide mapping boilerplate
-				show_help = true, -- show help message on the command line when the popup is visible
-				show_keys = true, -- show the currently pressed key and its label as a message in the command line
-				triggers = "auto", -- automatically setup triggers
-				-- triggers = {"<leader>"} -- or specify a list manually
-				triggers_blacklist = {
-					-- list of mode / prefixes that should never be hooked by WhichKey
-					-- this is mostly relevant for key maps that start with a native binding
-					-- most people should not need to change this
-					i = { "j", "k" },
-					v = { "j", "k" },
-				},
-				-- disable the WhichKey popup for certain buf types and file types.
-				-- Disabled by deafult for Telescope
-				disable = {
-					buftypes = {},
-					filetypes = { "TelescopePrompt" },
-				},
-			})
-		end,
-	},
-	{
 		"mbbill/undotree",
 		config = function()
 			vim.keymap.set('n', '<leader>u', vim.cmd.UndotreeToggle)
+			vim.g.undotree_WindowLayout = 2
+			vim.g.undotree_SetFocusWhenToggle = 1
+			vim.g.undotree_DiffCommand = [[sh -c 'diff "$@" | sed "s/\([<>]\)\s*/\1/" | sed "s/\s*\$//"' _]]
+			vim.g.undotree_HelpLine = 0
 		end,
 	},
+
 	{
 		'gelguy/wilder.nvim',
 		config = function()
@@ -162,37 +225,12 @@ return {
 	},
 
 	{
-		'vigoux/notifier.nvim',
+		'j-hui/fidget.nvim',
 		-- enabled = false,
+		tag = "legacy",
+		event = "LspAttach",
 		opts = {
-			ignore_messages = {}, -- Ignore message from LSP servers with this name
-			-- status_width = something, -- COmputed using 'columns' and 'textwidth'
-			components = {        -- Order of the components to draw from top to bottom (first nvim notifications, then lsp)
-				"nvim",             -- Nvim notifications (vim.notify and such)
-				"lsp"               -- LSP status updates
-			},
-			notify = {
-				clear_time = 5000,           -- Time in milliseconds before removing a vim.notify notification, 0 to make them sticky
-				min_level = vim.log.levels.INFO, -- Minimum log level to print the notification
-			},
-			component_name_recall = false, -- Whether to prefix the title of the notification by the component name
-			zindex = 50,                   -- The zindex to use for the floating window. Note that changing this value may cause visual bugs with other windows overlapping the notifier window.
 		},
-
-		{
-			'j-hui/fidget.nvim',
-			enabled = false,
-			config = function()
-				require("fidget").setup{}
-			end,
-		},
-	},
-
-	{
-		'echasnovski/mini.nvim', version = false,
-		config = function()
-			require('mini.ai').setup()
-		end,
 	},
 
 }
