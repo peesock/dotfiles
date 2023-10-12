@@ -32,8 +32,19 @@ _comp_options+=(globdots)		# Include hidden files.
 
 # add autocomplete for special aliases
 _dt () {
-	for ((i=0; i < $CURRENT; i++)); do
+	cwd=$PWD
+	dir=$(dt -g "$HOME/.dotfiles" dotpath -d -- "$cwd")
+	for ((i=0, lim=3; i < lim; i++)); do
 		case "${words[i]}" in
+			-w)
+				[ $i -eq $CURRENT ] && break
+				lim=$((lim + 2))
+				;;
+			-g)
+				[ $i -eq $CURRENT ] && break
+				dir=$(dt -g "$(eval "echo ${words[i+1]}")" dotpath -d -- "$cwd")
+				lim=$((lim + 2))
+				;;
 			g)
 				# idk how to run _git properly
 				words[i]="git"
@@ -42,14 +53,17 @@ _dt () {
 				_complete
 				return
 				;;
-			run)
+			run) # note that `dt run dt ...` will cd incorrectly :(
 				shift $i words
 				(( CURRENT -= i ))
+				cd "$dir"
 				_complete
+				cd "$cwd"
 				return
 				;;
 		esac
 	done
+	cd "$cwd"
 	_files
 }
 compdef _dt dt
