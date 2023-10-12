@@ -1,4 +1,4 @@
-pcm.!default { # changes the pcm device in use by looking for an environment variable set to that device. if ALSAPCM=voicechat, then the process using that variable will also use pcm.voicechat. this allows you to change what device you use for applications that only care about the default (almost all of them).
+pcm.!default { # uses ALSAPCM env var to optionally set different alsa devices. for eg, run `ALSAPCM=voicechat firefox` to (hopefully) allow mic usage by default in browser.
 	type plug
 		slave.pcm {
 			@func getenv
@@ -8,7 +8,7 @@ pcm.!default { # changes the pcm device in use by looking for an environment var
 }
 pcm.desktop { # asym device, sets up capture and playback into one package
 	type asym
-		playback.pcm "globalrouter"
+		playback.pcm "global2chan"
 		capture.pcm "desktopsnooper"
 		hint {
 			show on
@@ -17,7 +17,7 @@ pcm.desktop { # asym device, sets up capture and playback into one package
 }
 pcm.voicechat {
 	type asym
-		playback.pcm "globalrouter"
+		playback.pcm "global2chan"
 		capture.pcm "micsnooper"
 		hint {
 			show on
@@ -26,31 +26,43 @@ pcm.voicechat {
 }
 pcm.everything {
 	type asym
-	playback.pcm "globalrouter"
-	capture.pcm "capturemulti"
+		playback.pcm "global2chan"
+		capture.pcm "capturemulti"
 }
 ctl.everything {
 	type hw
-	card PCH
+		card PCH
 }
 
 pcm.capturemulti {
 	type multi
-	slaves.a.pcm "desktopsnooper"
-	slaves.a.channels 2
-	slaves.b.pcm "micsnooper"
-	slaves.b.channels 2
-	bindings.0 { slave a; channel 0; }
+		slaves.a.pcm "desktopsnooper"
+		slaves.a.channels 2
+		slaves.b.pcm "micsnooper"
+		slaves.b.channels 2
+		bindings.0 { slave a; channel 0; }
 	bindings.1 { slave a; channel 1; }
 	bindings.2 { slave b; channel 0; }
 	bindings.3 { slave b; channel 1; }
 }
 
-pcm.globalrouter { # takes input from the 4 channel pcm.globalquader, and routes the 4 channels into 2 channels for stereo playback. column #1 = globalrouter.pcm channel number, #2 = slave (pcm.globalquader) channel number, #3 = volume %.
+# now that channels 0,1 and 2,3 are equal, remove 2 and 3; they are redundant.
+pcm.global2chan {
+	type plug # without plug with defined slave.channels, mono audio sources may play only on one chnnael.
+		slave.pcm {
+			type route
+				slave.pcm "globalrouter"
+				slave.channels 4
+				ttable.0.0 1
+				ttable.1.1 1
+		}
+	slave.channels 2
+}
+pcm.globalrouter { # takes input from the 4 channel pcm.globalquader, and mixes channels 0 and 2 and 1 and 3 with each other, duplicating audio.
 	type route;
 	slave.pcm "globalquader"
-	# slave.channels 4
-	ttable.0.0 1;
+		slave.channels 4
+		ttable.0.0 1;
 	ttable.1.1 1;
 	ttable.0.2 1;
 	ttable.1.3 1;
@@ -59,8 +71,8 @@ pcm.globalquader { # creates a multi device called globalquader that has 4 chann
 	type multi
 		slaves.a.pcm "desktopmixer"
 		slaves.a.channels 2
-# slaves.b.pcm "speakermixer"
-		slaves.b.pcm "globalfifo"
+# slaves.b.pcm "globalfifo"
+		slaves.b.pcm "globalsoftvol"
 		slaves.b.channels 2
 		bindings.0 { slave a; channel 0; }
 		bindings.1 { slave a; channel 1; }
@@ -74,7 +86,7 @@ pcm.globalfifo {
 			type route;
 			slave.pcm "globalsoftvol"
 				ttable.0.0 1;
-				ttable.1.1 1;
+			ttable.1.1 1;
 		}
 	file "|/home/apoc/docs/code/c/safe_fifo /tmp/alsa.fifo"
 		format raw              # File format ("raw" or "wav")
@@ -113,7 +125,8 @@ pcm.speakermixer { # dmixer for my sound card, hw:PCH. does the same as desktopm
 				format S16_LE
 				channels 2
 				period_size 1024
-				buffer_size 8192
+# buffer_size 2048
+				buffer_size 4096
 		}
 }
 
@@ -127,7 +140,8 @@ pcm.desktopmixer { # dmixer for the loopback device. essentially mixes all playb
 				format S16_LE
 				channels 2
 				period_size 1024
-				buffer_size 8192
+# buffer_size 2048
+				buffer_size 4096
 		}
 }
 
@@ -140,7 +154,8 @@ pcm.desktopsnooper { # dnsooper for the loopback. similar to dmixer, it allows m
 				format S16_LE
 				channels 2
 				period_size 1024
-				buffer_size 8192
+# buffer_size 2048
+				buffer_size 4096
 		}
 }
 
@@ -154,20 +169,35 @@ pcm.micsnooper{
 				format S16_LE
 				channels 1
 				period_size 1024
-				buffer_size 8192
+# buffer_size 2048
+				buffer_size 4096
 		}
 }
 
 pcm.mpd {
 	type asym
-		playback.pcm "plug:pcm.mpdrouter"
-		capture.pcm "plug:pcm.mpdsnooper"
+		playback.pcm "mpd2chan"
+		capture.pcm "mpdsnooper"
+# playback.pcm "plug:pcm.mpdrouter"
+# capture.pcm "plug:pcm.mpdsnooper"
 		hint {
 			show on
 				description "for playing from and recording MPD."
 		}
 }
-
+# remove other 2 channels; they are redundant
+pcm.mpd2chan {
+	type plug
+		slave.pcm {
+			type route
+				slave.pcm "mpdrouter"
+				slave.channels 4
+				ttable.0.0 1
+				ttable.1.1 1
+		}
+	slave.channels 2
+}
+# mix audio between both devices
 pcm.mpdrouter {
 	type route;
 	slave.pcm "mpdquader";
@@ -180,26 +210,13 @@ pcm.mpdquader {
 	type multi
 		slaves.a.pcm "mpdmixer"
 		slaves.a.channels 2
-		# slaves.b.pcm "mpdfifo"
+# slaves.b.pcm "mpdfifo"
 		slaves.b.pcm "mpdsoftvol"
 		slaves.b.channels 2
 		bindings.0 { slave a; channel 0; }
-	bindings.1 { slave a; channel 1; }
-	bindings.2 { slave b; channel 0; }
-	bindings.3 { slave b; channel 1; }
-}
-
-pcm.mpdfifo {
-	type file
-		slave.pcm {
-			type route
-				slave.pcm "mpdsoftvol"
-				ttable.0.0 1;
-				ttable.1.1 1;
-		}
-	file "| /home/apoc/docs/code/c/safe_fifo /tmp/mpd.fifo"
-		format raw              # File format ("raw" or "wav")
-		perm 0666               # Output file permission (octal, def. 0600)
+		bindings.1 { slave a; channel 1; }
+		bindings.2 { slave b; channel 0; }
+		bindings.3 { slave b; channel 1; }
 }
 
 pcm.mpdsoftvol {
@@ -220,9 +237,10 @@ pcm.mpdmixer {
 			pcm "hw:Loopback,0,1"
 				rate 48000
 				format S16_LE
-				channels 2 
+				channels 2
 				period_size 1024
-				buffer_size 8192
+				buffer_size 2048
+# buffer_size 8192
 		}
 }
 pcm.mpdsnooper {
@@ -231,9 +249,10 @@ pcm.mpdsnooper {
 		slave {
 			pcm "hw:Loopback,1,1"
 				format S16_LE
-				channels 2 
-				period_size 1024 
-				buffer_size 8192
+				channels 2
+				period_size 1024
+				buffer_size 2048
+# buffer_size 8192
 		}
 }
 
@@ -245,9 +264,9 @@ pcm.jackmulti { # adds additional hardware that jack can use all at once
 		slaves.b.pcm "hw:BRIO"
 		slaves.b.channels 2
 		bindings.0 { slave a; channel 0; }
-		bindings.1 { slave a; channel 1; }
-		bindings.2 { slave b; channel 0; }
-		bindings.3 { slave b; channel 1; }
+	bindings.1 { slave a; channel 1; }
+	bindings.2 { slave b; channel 0; }
+	bindings.3 { slave b; channel 1; }
 }
 
 pcm.jackdesktop { # like pcm.desktop but for jack
@@ -260,12 +279,12 @@ pcm.jack {
 	type jack
 		playback_ports {
 			0 system:playback_1
-			1 system:playback_2
+				1 system:playback_2
 		}
-		capture_ports {
-			0 system:capture_1
+	capture_ports {
+		0 system:capture_1
 			1 system:capture_2
-		}
+	}
 }
 
 ctl.mixer0 {
