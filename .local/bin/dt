@@ -41,24 +41,24 @@ dotpath()(
 		if [ "$file" != "$fileGit" ]; then
 			# we are in the dots folder.
 			[ $reverse ] &&
-			echo "$workingDir$fileGit" ||
-			echo "$gitDir$fileGit"
+			out="$workingDir$fileGit" ||
+			out="$gitDir$fileGit"
 
 		elif [ "$file" != "$fileWorking" ] && [ "$file" = "$fileGit" ]; then
 			# we are in the home folder.
 			[ $reverse ] &&
-			echo "$workingDir$fileWorking" ||
-			echo "$gitDir$fileWorking"
+			out="$workingDir$fileWorking" ||
+			out="$gitDir$fileWorking"
 
-		else
-			[ $default ] || {
-				echo "error: '$file' outside working dir" >&2
-				exit=1
-				continue
-			}
-			echo "$gitDir"
+		elif ! [ $default ]; then
+			echo "error: '$file' outside working dir" >&2
+			exit=1
+			continue
 		fi
-
+		if [ $default ] && ! [ -e "$out" ]; then
+			out=$gitDir
+		fi
+		echo "$out"
 		exit=0
 	done
 	return $exit
