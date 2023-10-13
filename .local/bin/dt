@@ -51,7 +51,6 @@ dotpath()(
 					out="$gitDir$fileWorking"
 
 		elif ! [ $default ]; then
-			echo "error: '$file' outside working dir" >&2
 			exit=1
 			continue
 		fi

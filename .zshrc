@@ -33,7 +33,8 @@ _comp_options+=(globdots)		# Include hidden files.
 # add autocomplete for special aliases
 _dt () {
 	cwd=$PWD
-	dir=$(dt -g "$HOME/.dotfiles" dotpath -- "$cwd")
+	dir=$(dt -g "$HOME/.dotfiles" dotpath -- "$cwd") ||
+		dir=$HOME/.dotfiles
 	cmp(){
 		[ -d "$dir" ] && exist=true
 		mkdir -p "$dir"
@@ -50,7 +51,8 @@ _dt () {
 				;;
 			-g)
 				[ $i -eq $CURRENT ] && break
-				dir=$(dt -g "$(eval "echo ${words[i+1]}")" dotpath -- "$cwd")
+				dir=$(dt -g "$(eval "echo ${words[i+1]}")" dotpath -- "$cwd") ||
+					dir=$(eval "echo ${words[i+1]}")
 				lim=$((lim + 2))
 				;;
 			g)
