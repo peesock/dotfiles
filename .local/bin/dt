@@ -53,10 +53,9 @@ dotpath()(
 		elif ! [ $default ]; then
 			exit=1
 			continue
-		fi
-		if [ $default ] && ! [ -e "$out" ]; then
-			out=$gitDir
+		else
 			exit=2
+			out=$gitDir
 		fi
 		echo "$out"
 	done
@@ -97,14 +96,21 @@ rm()(
 	done
 )
 
+argpath()(
+	for arg in "$@"; do
+		[ "${arg#"$workingDir"}" != "$arg" ] && arg=$(dotpath "$arg")
+		printf '%s\0' "$arg"
+	done
+)
+
 run()(
-	dir=$(dotpath -- "$PWD") ||
-		dir="$gitDir"
+	dir=$(dotpath -d -- "$PWD")
 	[ -d "$dir" ] && exist=true
 	mkdir -p "$dir"
 	cd "$dir" || exit
 	trap '[ $exist ] || rmdir --ignore-fail-on-non-empty -p "$dir"; exit' INT
-	"$@"
+	x=$1; shift
+	argpath "$@" | xargs -0 "$x"
 	[ $exist ] || rmdir --ignore-fail-on-non-empty -p "$dir"
 )
 
