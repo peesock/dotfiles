@@ -33,7 +33,15 @@ _comp_options+=(globdots)		# Include hidden files.
 # add autocomplete for special aliases
 _dt () {
 	cwd=$PWD
-	dir=$(dt -g "$HOME/.dotfiles" dotpath -d -- "$cwd")
+	dir=$(dt -g "$HOME/.dotfiles" dotpath -- "$cwd")
+	cmp(){
+		[ -d "$dir" ] && exist=true
+		mkdir -p "$dir"
+		cd "$dir"
+		_complete
+		[ $exist ] || rmdir --ignore-fail-on-non-empty -p "$dir"
+		cd "$cwd"
+	}
 	for ((i=0, lim=3; i < lim; i++)); do
 		case "${words[i]}" in
 			-w)
@@ -42,7 +50,7 @@ _dt () {
 				;;
 			-g)
 				[ $i -eq $CURRENT ] && break
-				dir=$(dt -g "$(eval "echo ${words[i+1]}")" dotpath -d -- "$cwd")
+				dir=$(dt -g "$(eval "echo ${words[i+1]}")" dotpath -- "$cwd")
 				lim=$((lim + 2))
 				;;
 			g)
@@ -50,15 +58,13 @@ _dt () {
 				words[i]="git"
 				shift $((i - 1)) words
 				(( CURRENT -= (i-1) ))
-				_complete
+				cmp
 				return
 				;;
 			run) # note that `dt run dt ...` will cd incorrectly :(
 				shift $i words
 				(( CURRENT -= i ))
-				cd "$dir"
-				_complete
-				cd "$cwd"
+				cmp
 				return
 				;;
 		esac

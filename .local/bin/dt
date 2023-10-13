@@ -41,14 +41,14 @@ dotpath()(
 		if [ "$file" != "$fileGit" ]; then
 			# we are in the dots folder.
 			[ $reverse ] &&
-			out="$workingDir$fileGit" ||
-			out="$gitDir$fileGit"
+				out="$workingDir$fileGit" ||
+					out="$gitDir$fileGit"
 
 		elif [ "$file" != "$fileWorking" ] && [ "$file" = "$fileGit" ]; then
 			# we are in the home folder.
 			[ $reverse ] &&
-			out="$workingDir$fileWorking" ||
-			out="$gitDir$fileWorking"
+				out="$workingDir$fileWorking" ||
+					out="$gitDir$fileWorking"
 
 		elif ! [ $default ]; then
 			echo "error: '$file' outside working dir" >&2
@@ -57,9 +57,9 @@ dotpath()(
 		fi
 		if [ $default ] && ! [ -e "$out" ]; then
 			out=$gitDir
+			exit=2
 		fi
 		echo "$out"
-		exit=0
 	done
 	return $exit
 )
@@ -99,8 +99,14 @@ rm()(
 )
 
 run()(
-	cd "$(dotpath -d -- "$PWD")" || exit
+	dir=$(dotpath -- "$PWD") ||
+		dir="$gitDir"
+	[ -d "$dir" ] && exist=true
+	mkdir -p "$dir"
+	cd "$dir" || exit
+	trap '[ $exist ] || rmdir --ignore-fail-on-non-empty -p "$dir"; exit' INT
 	"$@"
+	[ $exist ] || rmdir --ignore-fail-on-non-empty -p "$dir"
 )
 
 g()(
