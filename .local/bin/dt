@@ -16,7 +16,7 @@ options:
 functions:
 init         run git init on git dir
 link         recursively hardlink all arguments to git dir (requires GNU cp)
-restore      runs link in reverse, restoring your dotfiles from the git repo
+link -R      runs link in reverse, restoring your dotfiles from git. use -f to force
 add          run link and git add on all arguments
 rm           recursively remove *both* existing hardlinks (and folders) of argument
 mv           mv + git mv, only 2 args (i need to rewrite this stupid program in C)
@@ -64,8 +64,13 @@ dotpath()(
 )
 
 link()(
-	[ "$1" = "-R" ] && restore=true && shift
-	[ "$1" = '--' ] && shift
+	opts=$(getopt -o 'Rf' -- "$@")
+	eval set -- $opts
+	while true; do
+		[ "$1" = "-R" ] && restore=true && shift
+		[ "$1" = "-f" ] && force=true && shift
+		[ "$1" = '--' ] && shift && break
+	done
 	for infile in "$@"; do
 		if [ $restore ]; then
 			infile=$(dotpath "$infile")
@@ -76,16 +81,12 @@ link()(
 		fi
 		mkdir -p "$(dirname "$outfile")"
 		echo "linking '$infile' to '$outfile'" >&2
-		cp -rflT $([ $restore ] && echo '-i') "$infile" "$outfile"
+		cp -rflT $(! [ $force ] && [ $restore ] && echo '-i') "$infile" "$outfile"
 	done
 )
 
-restore()(
-	link -R -- "$@"
-)
-
 add()(
-	link "$@"
+	link -- "$@"
 	g add "$@"
 )
 
@@ -105,7 +106,12 @@ mv()(
 
 argpath()(
 	for arg in "$@"; do
-		[ "${arg#"$workingDir"}" != "$arg" ] && arg=$(dotpath "$arg")
+		if [ $fileTrue ]; then
+			arg=$(dotpath -- "$arg")
+		else
+			[ "$arg" = "--" ] && fileTrue=true && continue
+			[ "${arg#"$workingDir"}" != "$arg" ] && arg=$(dotpath "$arg")
+		fi
 		printf '%s\0' "$arg"
 	done
 )

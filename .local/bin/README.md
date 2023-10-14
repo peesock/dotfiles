@@ -52,10 +52,9 @@ sxhkd is used to temporarily steal a set of keys from your keyboard to use for t
 My dotfile management script. It uses hardlinks instead of symlinks to manage the repo, following the argument of [this blogpost](https://port19.xyz/tech/hardlinks/).
 
 ## usage
-dt currently has 8 functions:
 - init - run git init on git dir
 - link - recursively hardlink all arguments to git dir (requires GNU cp)
-- restore - runs link in reverse, restoring your dotfiles from the git repo
+- link -R - runs link in reverse, restoring your dotfiles from git. use -f to force
 - add - run link and git add on all arguments
 - mv - mv + git mv, only 2 args (i need to rewrite this stupid program in C)
 - rm - recursively remove *both* existing hardlinks (and folders) of argument
