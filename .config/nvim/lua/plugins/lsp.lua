@@ -76,10 +76,10 @@ return {
 			end
 			diagnostical(diagnostics_active)
 
+			-- add borders to K stuff
 			vim.lsp.handlers["textDocument/hover"] = vim.lsp.with(vim.lsp.handlers.hover, {
 				border = "rounded",
 			})
-
 			vim.lsp.handlers["textDocument/signatureHelp"] = vim.lsp.with(vim.lsp.handlers.signature_help, {
 				border = "rounded",
 			})
@@ -91,8 +91,6 @@ return {
 					remap = false,
 				}
 
-				-- vim.keymap.set('x', '<Leader>' .. suffix, rhs, { desc = desc })
-				-- add window border around hover
 				mapper("n", "K", function() vim.lsp.buf.hover() end, "", opts)
 				mapper("n", "gd", function() vim.lsp.buf.definition() end, "Definition", opts)
 				mapper("n", "gD", function() vim.lsp.buf.declaration() end, "Declaration", opts)

@@ -57,6 +57,7 @@ dt currently has 8 functions:
 - link - recursively hardlink all arguments to git dir (requires GNU cp)
 - restore - runs link in reverse, restoring your dotfiles from the git repo
 - add - run link and git add on all arguments
+- mv - mv + git mv, only 2 args (i need to rewrite this stupid program in C)
 - rm - recursively remove *both* existing hardlinks (and folders) of argument
 - run - run arguments as if you were in the git repo (if outside, defaults to top)
 - g - runs git with modified options and file paths to change the dot repo

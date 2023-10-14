@@ -1,42 +1,48 @@
 return {
 	{
-		'echasnovski/mini.nvim', version = false,
+		'echasnovski/mini.ai',
 		config = function()
 			require('mini.ai').setup()
+		end,
+	},
+
+	{
+		'echasnovski/mini.align',
+		config = function()
 			require('mini.align').setup({
 				mappings = {
 					start = 'gA',
 				},
 			})
+		end,
+	},
+
+	{
+		'echasnovski/mini.clue',
+		config = function()
 			local miniclue = require('mini.clue')
 			miniclue.setup({
 				triggers = {
 					-- Leader triggers
 					{ mode = 'n', keys = '<Leader>' },
 					{ mode = 'x', keys = '<Leader>' },
-
 					-- Built-in completion
 					{ mode = 'i', keys = '<C-x>' },
-
 					-- `g` key
 					{ mode = 'n', keys = 'g' },
 					{ mode = 'x', keys = 'g' },
-
 					-- Marks
 					{ mode = 'n', keys = "'" },
 					{ mode = 'n', keys = '`' },
 					{ mode = 'x', keys = "'" },
 					{ mode = 'x', keys = '`' },
-
 					-- Registers
 					{ mode = 'n', keys = '"' },
 					{ mode = 'x', keys = '"' },
 					{ mode = 'i', keys = '<C-r>' },
 					{ mode = 'c', keys = '<C-r>' },
-
 					-- Window commands
 					{ mode = 'n', keys = '<C-w>' },
-
 					-- `z` key
 					{ mode = 'n', keys = 'z' },
 					{ mode = 'x', keys = 'z' },
@@ -52,7 +58,19 @@ return {
 					miniclue.gen_clues.z(),
 				},
 			})
+		end,
+	},
+
+	{
+		'echasnovski/mini.bufremove',
+		config = function()
 			require('mini.bufremove').setup()
+		end,
+	},
+
+	{
+		'echasnovski/mini.comment',
+		config = function()
 			require('mini.comment').setup({
 				-- Options which control module behavior
 				options = {
@@ -82,9 +100,16 @@ return {
 				},
 
 			})
-			vim.keymap.set('n', 'gco', 'o.<Esc>gcc$s', { remap = true, })
-			vim.keymap.set('n', 'gcO', 'O.<Esc>gcc$s', { remap = true, })
-			vim.keymap.set('n', 'gcA', 'o.<Esc>gcckJ$s', { remap = true, })
+			mapper('n', 'gco', 'o.<Esc>gcc$s', "Comment below", { remap = true, })
+			mapper('n', 'gcO', 'O.<Esc>gcc$s', "Comment above", { remap = true, })
+			mapper('n', 'gcA', 'o.<Esc>gcckJ$s', "Comment append", { remap = true, })
+		end,
+	},
+
+	{
+		'echasnovski/mini.indentscope',
+		event = 'LspAttach', -- it looks ugly outside of code
+		config = function()
 			require('mini.indentscope').setup({
 				-- Draw options
 				draw = {
@@ -98,7 +123,6 @@ return {
 					-- Textobjects
 					object_scope = 'ii',
 					object_scope_with_border = 'ai',
-
 					-- Motions (jump to respective border line; if not present - body line)
 					goto_top = '[i',
 					goto_bottom = ']i',
@@ -109,44 +133,41 @@ return {
 					-- Type of scope's border: which line(s) with smaller indent to
 					-- categorize as border. Can be one of: 'both', 'top', 'bottom', 'none'.
 					border = 'both',
-
 					-- Whether to use cursor column when computing reference indent.
 					-- Useful to see incremental scopes with horizontal cursor movements.
 					indent_at_cursor = true,
-
 					-- Whether to first check input line to be a border of adjacent scope.
 					-- Use it if you want to place cursor on function header to get scope of
 					-- its body.
 					try_as_border = true,
 				},
 
-				-- │ ╎ ┆ ┊
 				-- Which character to use for drawing scope indicator
 				symbol = '│',
-
 			})
-			local hipatterns = require('mini.hipatterns')
-			hipatterns.setup({
-				highlighters = {
-					-- Highlight standalone 'FIXME', 'HACK', 'TODO', 'NOTE'
-					fixme = { pattern = '%f[%w]()FIXME()%f[%W]', group = 'MiniHipatternsFixme' },
-					hack  = { pattern = '%f[%w]()HACK()%f[%W]',  group = 'MiniHipatternsHack'  },
-					todo  = { pattern = '%f[%w]()TODO()%f[%W]',  group = 'MiniHipatternsTodo'  },
-					note  = { pattern = '%f[%w]()NOTE()%f[%W]',  group = 'MiniHipatternsNote'  },
-					-- Highlight hex color strings (`#rrggbb`) using that color
-					hex_color = hipatterns.gen_highlighter.hex_color(),
+		end,
+	},
+
+	{
+		'echasnovski/mini.jump',
+		config = function()
+			require('mini.jump').setup({
+				-- Delay values (in ms) for different functionalities. Set any of them to
+				-- a very big number (like 10^7) to virtually disable.
+				delay = {
+					-- Delay between jump and highlighting all possible jumps
+					highlight = 250,
+
+					-- Delay between jump and automatic stop if idle (no jump is done)
+					idle_stop = 0,
 				},
 			})
-			require('mini.pairs').setup()
-			vim.g.minipairs_disable = true
-			vim.keymap.set('n', '<leader>a', function()
-				vim.g.minipairs_disable = not vim.g.minipairs_disable
-				if vim.g.minipairs_disable then
-					print 'autopairs disabled'
-				else
-					print 'autopairs enabled'
-				end
-			end, { desc = 'Toggle autopairs'})
+		end,
+	},
+
+	{
+		'echasnovski/mini.move',
+		config = function()
 			require('mini.move').setup({
 				-- Module mappings. Use `''` (empty string) to disable one.
 				mappings = {
@@ -168,19 +189,27 @@ return {
 					reindent_linewise = true,
 				},
 			})
-			require('mini.jump').setup({
-				-- Delay values (in ms) for different functionalities. Set any of them to
-				-- a very big number (like 10^7) to virtually disable.
-				delay = {
-					-- Delay between jump and highlighting all possible jumps
-					highlight = 250,
-
-					-- Delay between jump and automatic stop if idle (no jump is done)
-					idle_stop = 0,
-				},
-			})
-			-- mini.jump2d :flushed:
 		end,
+	},
+
+	{
+		'echasnovski/mini.pairs',
+		config = function()
+			require('mini.pairs').setup()
+			vim.g.minipairs_disable = true
+			mapper({'i','n'}, '<m-a>', function()
+				vim.g.minipairs_disable = not vim.g.minipairs_disable
+				if vim.g.minipairs_disable then
+					print 'autopairs disabled'
+				else
+					print 'autopairs enabled'
+				end
+			end, 'Toggle autopairs')
+		end
+	},
+
+	{
+		'tpope/vim-surround',
 	},
 
 	{
@@ -189,9 +218,11 @@ return {
 
 		end,
 	},
+
 	{
 		"kovetskiy/sxhkd-vim",
 	},
+
 	{
 		"waycrate/swhkd-vim",
 	},
@@ -201,17 +232,18 @@ return {
 	},
 
 	{
-		"norcalli/nvim-colorizer.lua",
-	},
-
-	{
 		"mbbill/undotree",
 		config = function()
-			vim.keymap.set('n', '<leader>u', vim.cmd.UndotreeToggle)
+			mapper('n', '<leader>u', vim.cmd.UndotreeToggle, "Toggle Undotree")
 			vim.g.undotree_WindowLayout = 2
+			vim.g.undotree_DiffpanelHeight = 8
 			vim.g.undotree_SetFocusWhenToggle = 1
+			-- remove leading whitespace
 			vim.g.undotree_DiffCommand = [[sh -c 'diff "$@" | sed "s/\([<>]\)\s*/\1/" | sed "s/\s*\$//"' _]]
 			vim.g.undotree_HelpLine = 0
+			vim.g.undotree_ShortIndicators = 1
+			vim.g.undotree_SplitWidth = 25
+			-- vim.g.undotree_RelativeTimestamp = 0
 		end,
 	},
 
