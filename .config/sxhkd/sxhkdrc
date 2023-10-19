@@ -106,11 +106,12 @@ super + shift + ctrl + q
 
 # Expanded Utilities
 
-super + u; {o,s,p,c}
+super + u; {o,s,p,c,u}
 	{ocrgrab text,\
 	servtoggle.sh 'screenkey --opacity 0.4',\
 	servtoggle.sh pipewire pipewire-pulse wireplumber pasystray,\
-	servtoggle.sh picom}
+	servtoggle.sh picom,\
+	servtoggle.sh -p udiskie }
 
 
 # Audio
