@@ -1,2 +1,2 @@
 #!/bin/sh
-echo "$fs" | xargs -d '\n' sh -c ". '$HOME/.config/shell/aliasrc'; eval '$*' '\$@'" _
+echo "$fs" | xargs -d '\n' "$@"

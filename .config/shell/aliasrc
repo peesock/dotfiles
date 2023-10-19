@@ -57,4 +57,4 @@ alias \
 
 	alias \
 	lf='lfpp' \
-	dt='dt -g $HOME/code/repo/dotfiles'
+	dt='dt -g $HOME/build/repo/dotfiles'

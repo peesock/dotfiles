@@ -61,7 +61,8 @@ opt.mouse = "a"
 vim.cmd.filetype("plugin", "on")
 opt.omnifunc = "syntaxcomplete#Complete"
 opt.swapfile = false
-opt.backup = false
+opt.backup = true
+opt.backupdir = "/tmp/vim"
 opt.undodir = os.getenv("HOME") .. "/.local/share/nvim/undodir"
 opt.undofile = true
 

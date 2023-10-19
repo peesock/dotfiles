@@ -102,7 +102,7 @@ fi
 converter(){
 	echo
 	tmp=$(mktemp -u).$type
-	ffmpeg -hide_banner $inOpts -i "$infile" $outOpts $outQualityOpts "$tmp" ||
+	ffmpeg -hide_banner $inOpts -i "$infile" $outOpts "$tmp" ||
 		{ rm -v "$tmp"; exit 1; }
 	mv -v "$tmp" "$outfile"
 }
