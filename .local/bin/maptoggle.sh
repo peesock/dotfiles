@@ -46,10 +46,10 @@ while [ $i -le $# ]; do
 	i=$((i + 1))
 done
 
-if line=$(grep "^$uid," "$path/processes"); then
-	winid=$(echo $line | cut -d',' -f2)
+if line=$(grep -Fm 1 "$uid," "$path/processes"); then
+	winid=$(echo "$line" | cut -d',' -f2)
 	xprop -id "$winid" 2>/dev/null | grep "^_$scriptname.*$uid" >/dev/null || execute "$@"
-	state=$(echo $line | cut -d',' -f3)
+	state=$(echo "$line" | cut -d',' -f3)
 	if [ $state -eq 0 ]; then
 		xdotool windowmap "$winid"
 		sed -i.bak "/^$uid,/c\\$uid,$winid,1" "$path/processes"

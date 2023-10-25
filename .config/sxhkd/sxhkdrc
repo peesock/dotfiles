@@ -52,15 +52,15 @@ super + a; n
 
 # open terminal popup
 super + alt + Return
-	wid=$(maptoggle.sh "popup terminal" "$TERMINAL" -echo); [ -n $wid ] && (awesome-client "local c = nil ; for _, c2 in ipairs(client.get()) do ; if c2.window == $wid then ; c = c2 ; break ; end ; end ; if not c then return end ; c.floating = true" ; xdotool windowmove $wid 25% 25% ; xdotool windowsize $wid 50% 50%); unset wid
+	wid=$(maptoggle.sh "popup terminal" "$TERMINAL" -echo); [ -n "$wid" ] && (awesome-client "local c = nil ; for _, c2 in ipairs(client.get()) do ; if c2.window == $wid then ; c = c2 ; break ; end ; end ; if not c then return end ; c.floating = true" ; xdotool windowmove $wid 25% 25% ; xdotool windowsize $wid 50% 50%); unset wid
 
 # music playah popup
 super + alt + p
-	wid=$(maptoggle.sh "musically" "$TERMINAL -e ncmpcpp" -echo); [ -n $wid ] && (awesome-client "local c = nil ; for _, c2 in ipairs(client.get()) do ; if c2.window == $wid then ; c = c2 ; break ; end ; end ; if not c then return end ; c.floating = true" ; xdotool windowmove $wid 25% 25% ; xdotool windowsize $wid 50% 50%); unset wid
+	wid=$(maptoggle.sh "musically" "$TERMINAL -e ncmpcpp" -echo); [ -n "$wid" ] && (awesome-client "local c = nil ; for _, c2 in ipairs(client.get()) do ; if c2.window == $wid then ; c = c2 ; break ; end ; end ; if not c then return end ; c.floating = true" ; xdotool windowmove $wid 25% 25% ; xdotool windowsize $wid 50% 50%); unset wid
 
 # calculator popup
 super + alt + m
-	wid=$(maptoggle.sh "qalcwise" "$TERMINAL -o font_size=12 -e qalc" -echo); [ -n $wid ] && (awesome-client "local c = nil ; for _, c2 in ipairs(client.get()) do ; if c2.window == $wid then ; c = c2 ; break ; end ; end ; if not c then return end ; c.floating = true" ; xdotool windowmove $wid 25% 25% ; xdotool windowsize $wid 50% 50%); unset wid
+	wid=$(maptoggle.sh "qalcwise" "$TERMINAL -o font_size=12 -e qalc" -echo); [ -n "$wid" ] && (awesome-client "local c = nil ; for _, c2 in ipairs(client.get()) do ; if c2.window == $wid then ; c = c2 ; break ; end ; end ; if not c then return end ; c.floating = true" ; xdotool windowmove $wid 25% 25% ; xdotool windowsize $wid 50% 50%); unset wid
 
 # Basic Utilities
 
