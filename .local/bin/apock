@@ -71,7 +71,7 @@ visualizer(){
 	# pause all non-server programs accessing the fifo
 	fifoFile="/tmp/mpd.fifo"
 	# pause the shells attached to visualizers (if any) to prevent shitassery
-	blackParents="zsh sh dash bash fish"
+	blackParents=$(chsh -l | while read sh; do basename "$sh"; done)
 	# protect these programs accessing the fifo from being paused
 	whiteChildren="mpd safe_fifo"
 

@@ -12,11 +12,7 @@ xsetroot -cursor_name left_ptr # ensures correct cursor on X root window
 sxhkd &
 dunst &
 unclutter --ignore-scrolling --start-hidden &
-mpd &
-# cmst -m &
-# nm-applet &
 udiskie &
-qbittorrent &
 picom &
 syncthing --no-browser > ~/.cache/syncthing.log 2>&1 &
 

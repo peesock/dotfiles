@@ -45,7 +45,7 @@ super + a; d
 	sudo gparted
 # open torrent client
 super + a; t
-	qbittorrent
+	transmission-qt
 
 super + a; n
 	nm-connection-editor
