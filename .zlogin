@@ -1,7 +1,10 @@
 (
 	{
-		mpd --kill
+		netwait.sh # wait for slow bitchass networkmanager (i use runit btw)
+
 		mpd
 		mpc pause
-	} >/dev/null 2>&1 &
+
+		transmission-daemon -g ~/.config/transmission
+	} > /dev/null 2>&1 &
 )
