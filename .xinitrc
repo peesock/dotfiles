@@ -15,6 +15,7 @@ unclutter --ignore-scrolling --start-hidden &
 udiskie &
 picom &
 syncthing --no-browser > ~/.cache/syncthing.log 2>&1 &
+libretranslate --threads "$(nproc)" &
 
 # Ensure that xrdb has finished running before moving on to start the WM/DE.
 [ -n "$xrdbpid" ] && wait "$xrdbpid"

@@ -16,8 +16,8 @@ bin=$(basename "$(command -v "$1")")
 }
 
 linkDir=$2
-[ -e "$linkDir" ] || {
-	echo "'$linkDir' does not exist" >&2
+( [ -d "$linkDir" ] || [ -h "$linkDir" ] ) || {
+	echo "'$linkDir' is not a dir/symlink" >&2
 	exit 1
 }
 

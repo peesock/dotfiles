@@ -50,7 +50,8 @@ alias \
 #special aliases
 alias \
 	magit="nvim -c MagitOnly" \
-	start-nginx='sudo nginx -c $XDG_CONFIG_HOME/nginx/nginx.conf'
+	start-nginx='sudo nginx -c $XDG_CONFIG_HOME/nginx/nginx.conf' \
+	sudo='sudo '
 
 	which rlwrap >/dev/null && alias \
 	dash="rlwrap dash"
