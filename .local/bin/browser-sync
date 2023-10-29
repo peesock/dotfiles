@@ -1,0 +1,68 @@
+#!/bin/sh
+set -e
+
+command -v rsync >/dev/null 2>&1 || { echo "Needs rsync bud"; exit 1; }
+
+time=$((15 * 60)) # seconds
+
+unset daemon exitDown
+[ "$1" = "-d" ] && daemon=true && shift &&
+	[ "$1" = "-e" ] && exitDown=true && shift
+
+bin=$(basename "$(command -v "$1")")
+[ -z "$bin" ] && {
+	echo "'$1' not a valid binary" >&2
+	exit 1
+}
+
+linkDir=$2
+[ -e "$linkDir" ] || {
+	echo "'$linkDir' does not exist" >&2
+	exit 1
+}
+
+staticDir="${linkDir}-static"
+memDir="/dev/shm/$bin-$(basename "$linkDir")-$USER"
+
+# make mem dir
+[ ! -r "$memDir" ] && {
+	mkdir -m0700 "$memDir"
+}
+
+# link mem dir to linkDir
+[ "$(readlink "$linkDir")" != "$memDir" ] && {
+	mv "$linkDir" "$staticDir"
+	ln -s "$memDir" "$linkDir"
+}
+
+sync(){
+	if [ -e "$linkDir/.unpacked" ]; then
+		rsync -av --delete --exclude .unpacked "$linkDir/" "$staticDir"
+	else
+		rsync -av "$staticDir/" "$linkDir"
+		touch "$linkDir/.unpacked"
+	fi
+}
+
+trap sync INT TERM
+
+sync
+
+running=false
+while [ $daemon ]; do
+	sleep 1
+	i=$((i + 1))
+	if pidof "$bin" >/dev/null; then
+		running=true
+		# echo "$bin is up" >&2
+		[ $((i % time)) -eq 0 ] &&
+			sync && i=0
+	else
+		# echo "$bin is down" >&2
+		i=0
+		[ "$running" = "true" ] &&
+			sync
+		[ "$exitDown" ] && break
+		running=false
+	fi
+done

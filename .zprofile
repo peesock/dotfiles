@@ -3,7 +3,7 @@
 
 # custom environment variables
 export TERMINAL=kitty
-export BROWSER=firefox
+export BROWSER=firefox.sh
 export SCREENSHOTS=$HOME/pics/screenshots
 export EDITOR=nvim
 export XDG_CONFIG_HOME="$HOME/.config"
