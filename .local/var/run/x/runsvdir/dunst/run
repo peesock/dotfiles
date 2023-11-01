@@ -1,0 +1,3 @@
+#!/bin/sh
+dunst
+pidwait -x dunst

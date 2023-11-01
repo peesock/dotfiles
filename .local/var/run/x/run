@@ -1,0 +1,8 @@
+#!/bin/sh
+[ -r env ] && {
+	unset $(env | awk -F= '/^\w/ {print $1}' | xargs)
+	. env
+}
+for file in *; do [ -h "$file" ] && rm "$file"; done
+for dir in runsvdir/*; do ln -s "$dir" .; done
+exec runsvdir runsvdir

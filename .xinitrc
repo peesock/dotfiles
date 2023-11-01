@@ -9,13 +9,9 @@ xrdb ${XDG_CONFIG_HOME:-$HOME/.config}/x11/xresources & xrdbpid=$!	# use Xresour
 
 xsetroot -cursor_name left_ptr # ensures correct cursor on X root window
 
-sxhkd &
-dunst &
 unclutter --ignore-scrolling --start-hidden &
-udiskie &
-picom &
-syncthing --no-browser > ~/.cache/syncthing.log 2>&1 &
-libretranslate --threads "$(nproc)" &
+export -p > "$HOME/.local/var/run/x/env"
+svu up x
 
 # Ensure that xrdb has finished running before moving on to start the WM/DE.
 [ -n "$xrdbpid" ] && wait "$xrdbpid"
@@ -34,5 +30,3 @@ bspwm) exe=bspwm ;;
 esac
 mkdir -p "$HOME/.cache/desktop-logs"
 exec $exe >"$HOME/.cache/desktop-logs/log-$(date +%s)" 2>&1
-
-# autostart programs that must be launched after the WM
