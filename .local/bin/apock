@@ -19,7 +19,7 @@ fi
 
 programName=$(basename "$0")
 
-if ! [ $xss ] && ps -o command= $(pgrep -xn "xss-lock") | grep -- "--\s*$programName" >/dev/null; then
+if ! [ $xss ] && ps -o command= $(pidof -s "xss-lock") | grep -- "--\s*$programName" >/dev/null; then
 	xset s activate
 	exit
 fi
