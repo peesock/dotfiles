@@ -3,11 +3,14 @@ set -e
 
 command -v rsync >/dev/null 2>&1 || { echo "Needs rsync bud"; exit 1; }
 
-time=$((15 * 60)) # seconds
+time=30m
 
-unset daemon exitDown
-[ "$1" = "-d" ] && daemon=true && shift &&
-	[ "$1" = "-e" ] && exitDown=true && shift
+[ "$1" = "-d" ] && {
+		daemon=true && shift &&
+			[ "$1" = "-e" ] && exitDown=true && shift
+		trap "exit" TERM INT
+		trap 'kill 0' EXIT
+}
 
 bin=$(basename "$(command -v "$1")")
 [ -z "$bin" ] && {
@@ -16,8 +19,8 @@ bin=$(basename "$(command -v "$1")")
 }
 
 linkDir=$2
-( [ -d "$linkDir" ] || [ -h "$linkDir" ] ) || {
-	echo "'$linkDir' is not a dir/symlink" >&2
+[ -h "$linkDir" ] || [ -d "$linkDir" ] || {
+	echo "'$linkDir' is not a dir" >&2
 	exit 1
 }
 
@@ -36,6 +39,7 @@ memDir="/dev/shm/$bin-$(basename "$linkDir")-$USER"
 }
 
 sync(){
+	# notify-send syncing
 	if [ -e "$linkDir/.unpacked" ]; then
 		rsync -av --delete --exclude .unpacked "$linkDir/" "$staticDir"
 	else
@@ -44,25 +48,29 @@ sync(){
 	fi
 }
 
-trap sync INT TERM
-
-sync
-
-running=false
-while [ $daemon ]; do
-	sleep 1
-	i=$((i + 1))
-	if pidof "$bin" >/dev/null; then
-		running=true
-		# echo "$bin is up" >&2
-		[ $((i % time)) -eq 0 ] &&
-			sync && i=0
-	else
-		# echo "$bin is down" >&2
-		i=0
-		[ "$running" = "true" ] &&
+if [ ! $daemon ]; then
+	sync
+else
+	while true; do
+		if pidof "$bin" >/dev/null; then
+			# bin is up
+			unset syncerPID
+			{
+				while true; do
+					sleep "$time"
+					sync
+				done
+			} & syncerPID=$!
+			pidwait -x "$bin"
+			# bin was closed
+			kill $syncerPID
+			wait
 			sync
-		[ "$exitDown" ] && break
-		running=false
-	fi
-done
+		else
+			# bin is down
+			[ "$exitDown" ] && break
+			sleep 5
+		fi
+	done
+fi
+
