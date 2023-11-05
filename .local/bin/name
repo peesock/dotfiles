@@ -1,0 +1,67 @@
+#!/bin/sh
+# utils i often use for filenames
+
+# rules: extensions can be any length, but cannot end in '.'
+ext(){
+	sed -zn 's/.\+\.//p'
+}
+base(){
+	sed -z 's/\(.\+\)\..*/\1/'
+}
+
+renamer(){
+	for file; do
+		[ ! -e "$file" ] && {
+			printf "%s$d" "$file"
+			continue
+		}
+	
+		name=$(printf "%s" "$file" | base)
+		extension=$(printf "%s" "$file" | ext)
+		extension=${extension:+".$extension"}
+		i=1
+		while true; do
+			file="${name}-$i${extension}"
+			# echo "$file" >&2
+			[ -e "$file" ] || break
+			i=$((i + 1))
+		done
+		
+		printf "%s$d" "$file"
+		unset name n
+	done
+}
+
+# eval 'set -- '$(getopt -o 'qp' -- "$@")
+d="\n"
+while true; do
+	case "$1" in
+		-d)
+			d=$2
+			shift
+			;;
+		base|ext)
+			[ "$1" = "base" ] && fun=base || fun=ext
+			shift
+			if [ $# -le 0 ]; then $fun
+			else
+				printf "%s\0" "$@" | $fun
+			fi | tr '\0' "$d"
+			exit
+			;;
+		rename)
+			rename=true
+			;;
+		--)
+			shift
+			break
+			;;
+		*)
+			break
+			;;
+	esac
+	shift
+done
+
+
+[ $rename ] && renamer "$@"
