@@ -2,6 +2,7 @@
 Config files and scripts i use to create my desktop.
 
 These dotfiles aim to be as cross-compatible as possible for my preferences, meaning all shell scripts are posix sh scripts and i try to reduce dependencies on magic tools or services like a particular init system.
+![Riced out rizz](img/rice1.png)
 ## Tools
 
 ### Terminal
