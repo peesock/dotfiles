@@ -3,10 +3,10 @@
 # warn feature used with xss-lock
 if [ "$1" = "warn" ]; then
 	trap 'exit 0' TERM INT
-	i=$(xset q | grep cycle | awk '{print $4}')
+	i=$(xset q | awk '/cycle/{print $4}')
 	while [ $i -gt 0 ]; do
-		t=1050
-		[ $i -eq 1 ] && t=600 # prevents dunst from displaying this when waking up
+		t=2000
+		[ $i -eq 1 ] && t=500 # prevents dunst from displaying this when waking up
 		notify-send -r 13 -t $t "Locking" "$i\s"
 		sleep 1
 		i=$((i - 1))
@@ -18,12 +18,20 @@ if [ "$1" = "warn" ]; then
 		shift
 fi
 
-programName=$(basename "$0")
+[ "$xss" ] && {
+	waitingList=$(pgrep -ax "^$(ps -o comm= $$)" | grep -v " xss\| warn" | awk '{print $1}')
+	[ "$waitingList" ] && {
+		# ps -o command $waitingList
+		# date
+		waitpid -e $waitingList
+		# echo EXITING
+		# date
+		exit
+	}
+	unset waitingList
+}
 
-if ! [ $xss ] && ps -o command= $(pidof -s "xss-lock") | grep -- "--\s*$programName" >/dev/null; then
-	xset s activate
-	exit
-fi
+programName=$(basename "$0")
 
 trap 'kill 0' TERM INT
 
@@ -43,7 +51,8 @@ pre(){
 }
 post(){
 	dunstctl set-paused false
-	kill $(cat "$pidDir/clean"/*) 2>/dev/null
+	kill $(cat "$pidDir/clean"/* 2>/dev/null) 2>/dev/null
+	true
 }
 
 # simple fallback always runs in case the lock cover fails
@@ -51,7 +60,7 @@ fallback(){
 	sleep 3
 	# external variables used here have to be imported from $pidDIR
 	for f in "$pidDir"/* ; do
-		eval "$(basename "$f")='$(cat "$f")'"
+		[ -f "$f" ] && eval "$(basename "$f")='$(cat "$f")'"
 	done
 	waitpid $coverPID; (
 		notify-send -u critical "Lock screen" "Cover failed. Used fallback" &
@@ -131,7 +140,7 @@ xscreensaver()(
 				;;
 		esac
 	done
-	[ $1 ] && exe=/usr/lib/xscreensaver/$1
+	[ "$1" ] && exe=/usr/lib/xscreensaver/$1
 	lock -b none & lockPID=$!
 	echo $lockPID > "$pidDir/lockPID"
 	# find all Xephyr-labelled WIDs to compare them later, because Xephyr doesn't attach pids to their windows
@@ -148,18 +157,20 @@ xscreensaver()(
 		size=$(xdotool getdisplaygeometry)
 		while true; do
 			unset exePID
-			until [ $exe ]; do
-				exe=$(find /usr/lib/xscreensaver -maxdepth 1 -type f | grep -v "xscreensaver/xscreensaver" | shuf -n1)
+			until [ "$exe" ]; do
+				exe=$(find /usr/lib/xscreensaver -maxdepth 1 -type f | grep -v "xscreensaver/xscreensaver\|webcollage\|glitchpeg\|font\|text" | shuf -n1)
 				file --mime-type "$exe" | grep -F executable >/dev/null || unset exe
 			done
 			echo displaying "'$exe'" >&2
 			$exe & exePID=$!
 			echo $exePID > "$pidDir/clean/exe"
 			unset wid exe
-			until [ $wid ]; do # xdotool's --sync is SLOW
+			until [ "$wid" ]; do # xdotool's --sync is SLOW
 				wid=$(xdotool search --pid $exePID)
 			done
-			xdotool windowsize "$wid" $size &
+			xdotool windowsize "$wid" $size # my loop is FAST
+			xdotool windowstate --add FULLSCREEN "$wid"
+			xdotool windowsize "$wid" $size
 			xdotool windowstate --add FULLSCREEN "$wid"
 			[ ! "$cycle" ] && wait
 			sleep $t
