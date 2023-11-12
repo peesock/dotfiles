@@ -12,6 +12,7 @@ xsetroot -cursor_name left_ptr # ensures correct cursor on X root window
 unclutter --ignore-scrolling --start-hidden &
 export -p > "$HOME/.local/var/run/x/env"
 svu up x
+svu status x
 
 # Ensure that xrdb has finished running before moving on to start the WM/DE.
 [ -n "$xrdbpid" ] && wait "$xrdbpid"

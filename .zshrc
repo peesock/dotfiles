@@ -18,6 +18,8 @@ precmd_functions+=(set_win_title)
 HISTSIZE=10000000
 SAVEHIST=10000000
 HISTFILE="${XDG_CACHE_HOME:-$HOME/.cache}/zsh/history"
+mkdir -p "$(dirname "$HISTFILE")"
+touch "$HISTFILE"
 
 # Basic auto/tab complete:
 autoload -U compinit

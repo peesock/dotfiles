@@ -1,3 +1,2 @@
 #!/bin/sh
-rm env
 sv exit ./runsvdir/*

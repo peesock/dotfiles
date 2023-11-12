@@ -1,2 +1,2 @@
 #!/bin/sh
-mpc pause
+killall mpd

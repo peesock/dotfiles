@@ -1,2 +1,4 @@
 #!/bin/sh
-exec mpd --no-daemon
+mpd
+mpc pause >/dev/null
+pidwait -x mpd
