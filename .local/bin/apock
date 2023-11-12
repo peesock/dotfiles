@@ -15,6 +15,7 @@ if [ "$1" = "warn" ]; then
 	wait
 	elif [ "$1" = "xss" ]; then
 		xss=true
+		shift
 fi
 
 programName=$(basename "$0")
@@ -31,27 +32,27 @@ alias lock='alock -a passwd'
 
 # for storing inaccesible variables
 pidDir="/tmp/$USER/$programName"
-mkdir -p "$pidDir"
+mkdir -p "$pidDir"/clean
 
 pre(){
 	# kill secret services: if someone unlocks my screen, at least they won't have my unencrypted passwords
 	passwords -k -K -q 2>/dev/null &
 
 	dunstctl set-paused true
-	rm "$pidDir"/* 2>/dev/null
+	find "$pidDir" -type f -print0 | xargs -0 rm 2>/dev/null
 }
 post(){
 	dunstctl set-paused false
+	kill $(cat "$pidDir/clean"/*) 2>/dev/null
 }
 
 # simple fallback always runs in case the lock cover fails
 fallback(){
 	sleep 3
 	# external variables used here have to be imported from $pidDIR
-	for f in $pidDir/* ; do
-		eval "$(basename $f)=$(cat $f)"
+	for f in "$pidDir"/* ; do
+		eval "$(basename "$f")='$(cat "$f")'"
 	done
-	# echo $coverPID $lockPID $funcPID
 	waitpid $coverPID; (
 		notify-send -u critical "Lock screen" "Cover failed. Used fallback" &
 		kill $funcPID
@@ -62,7 +63,7 @@ fallback(){
 } 2>/dev/null
 
 # set up visualizer
-visualizer(){
+visualizer()(
 	terminal=alacritty
 
 	lock -b none & lockPID=$!
@@ -103,16 +104,80 @@ visualizer(){
 	echo $coverPID > "$pidDir/coverPID"
 
 	wait "$lockPID"
-	(kill "$fallbackPID"
-	kill "$coverPID"
-	kill -s CONT $pidList) &
-}
+	{
+		kill "$fallbackPID"
+		kill "$coverPID"
+		kill -s CONT $pidList
+	} &
+)
+
+xscreensaver()(
+	eval 'set -- '$(getopt -o 't:c' -- "$@")
+	t=1m
+	unset exe
+	while true; do
+		case "$1" in
+			-t)
+				t=$2
+				shift 2
+				;;
+			-c)
+				cycle=true
+				shift
+				;;
+			--)
+				shift
+				break
+				;;
+		esac
+	done
+	[ $1 ] && exe=/usr/lib/xscreensaver/$1
+	lock -b none & lockPID=$!
+	echo $lockPID > "$pidDir/lockPID"
+	# find all Xephyr-labelled WIDs to compare them later, because Xephyr doesn't attach pids to their windows
+	xdotool search --name '^Xephyr' | sort > "$pidDir/widList"
+	Xephyr :5 -fullscreen -no-host-grab -glamor 2>/dev/null & coverPID=$!
+	echo $coverPID > "$pidDir/coverPID"
+	while [ ! "$coverWID" ]; do
+		coverWID=$(xdotool search --name '^Xephyr' | sort | comm --nocheck-order -13 "$pidDir/widList" /dev/stdin)
+	done
+	xdotool windowactivate $coverWID; xdotool windowstate --add FULLSCREEN $coverWID
+	(
+		sleep 1
+		# export DISPLAY=:5
+		size=$(xdotool getdisplaygeometry)
+		while true; do
+			unset exePID
+			until [ $exe ]; do
+				exe=$(find /usr/lib/xscreensaver -maxdepth 1 -type f | grep -v "xscreensaver/xscreensaver" | shuf -n1)
+				file --mime-type "$exe" | grep -F executable >/dev/null || unset exe
+			done
+			echo displaying "'$exe'" >&2
+			$exe & exePID=$!
+			echo $exePID > "$pidDir/clean/exe"
+			unset wid exe
+			until [ $wid ]; do # xdotool's --sync is SLOW
+				wid=$(xdotool search --pid $exePID)
+			done
+			xdotool windowsize "$wid" $size &
+			xdotool windowstate --add FULLSCREEN "$wid"
+			[ ! "$cycle" ] && wait
+			sleep $t
+			kill "$exePID"
+		done
+	) & coverPID="$coverPID $!"
+
+	wait "$lockPID"
+	{
+		kill "$fallbackPID"
+		kill $coverPID
+	} &
+)
 
 # main
 pre
 fallback & fallbackPID=$!
-if command -v $terminal >/dev/null && command -v vis >/dev/null; then
-	visualizer & echo $! > "$pidDir/funcPID"
-fi
+[ "$1" = "-e" ] && exe=$2 && shift 2 || exe=visualizer
+$exe "$@" & echo $! > "$pidDir/funcPID"
 wait
 post
