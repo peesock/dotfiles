@@ -98,7 +98,7 @@ super + {_, alt} + ctrl + s
 
 # lock screen
 super + shift + ctrl + l
-	apock
+	apock xscreensaver -ct 60
 
 # logout
 super + shift + ctrl + q

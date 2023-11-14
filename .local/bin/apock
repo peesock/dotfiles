@@ -33,10 +33,13 @@ fi
 
 programName=$(basename "$0")
 
-trap 'kill 0' TERM INT
+trap 'exit' TERM INT
+trap 'kill 0' EXIT
 
-# lock arguments you'll always want
-alias lock='alock -a passwd'
+# basic lock command
+lock(){
+	alock -a passwd "$@"
+}
 
 # for storing inaccesible variables
 pidDir="/tmp/$USER/$programName"
@@ -68,13 +71,24 @@ fallback(){
 		kill $lockPID
 		lock
 	)
-
 } 2>/dev/null
+
+setfull()(
+	until xprop _NET_WM_STATE -id $1 | grep -F "STATE_FULLSCREEN" >/dev/null; do
+		xdotool windowstate --add FULLSCREEN $1
+	done
+)
+
+getwid()(
+	unset wid
+	until [ "$wid" ]; do
+		wid=$(xdotool search --pid $1)
+	done
+	echo "$wid"
+)
 
 # set up visualizer
 visualizer()(
-	terminal=alacritty
-
 	lock -b none & lockPID=$!
 	echo $lockPID > "$pidDir/lockPID"
 
@@ -108,15 +122,19 @@ visualizer()(
 	done
 	kill -s STOP $pidList 2>/dev/null
 
-	# kitty -o background="#000000" -o background_opacity=1 -o font_size=10 --start-as fullscreen vis & termPID=$!
-	alacritty -o 'colors.primary.background="#000000"' -o 'window.opacity=1' -o 'window.startup_mode=Fullscreen' -e vis & coverPID=$!
+	if command -v alacritty >/dev/null; then
+		alacritty -o 'colors.primary.background="#000000"' -o 'window.opacity=1' -e vis & coverPID=$!
+	else
+		xterm -bg '#000000' -e env TERM=xterm-256color vis & coverPID=$!
+	fi
+	setfull "$(getwid $coverPID)"
 	echo $coverPID > "$pidDir/coverPID"
 
 	wait "$lockPID"
 	{
 		kill "$fallbackPID"
 		kill "$coverPID"
-		kill -s CONT $pidList
+		kill -s CONT $pidList 2>/dev/null
 	} &
 )
 
@@ -141,54 +159,49 @@ xscreensaver()(
 		esac
 	done
 	[ "$1" ] && exe=/usr/lib/xscreensaver/$1
+
 	lock -b none & lockPID=$!
 	echo $lockPID > "$pidDir/lockPID"
-	# find all Xephyr-labelled WIDs to compare them later, because Xephyr doesn't attach pids to their windows
-	xdotool search --name '^Xephyr' | sort > "$pidDir/widList"
-	Xephyr :5 -fullscreen -no-host-grab -glamor 2>/dev/null & coverPID=$!
-	echo $coverPID > "$pidDir/coverPID"
-	while [ ! "$coverWID" ]; do
-		coverWID=$(xdotool search --name '^Xephyr' | sort | comm --nocheck-order -13 "$pidDir/widList" /dev/stdin)
-	done
-	xdotool windowactivate $coverWID; xdotool windowstate --add FULLSCREEN $coverWID
-	(
-		sleep 1
-		# export DISPLAY=:5
-		size=$(xdotool getdisplaygeometry)
-		while true; do
-			unset exePID
-			until [ "$exe" ]; do
-				exe=$(find /usr/lib/xscreensaver -maxdepth 1 -type f | grep -v "xscreensaver/xscreensaver\|webcollage\|glitchpeg\|font\|text" | shuf -n1)
-				file --mime-type "$exe" | grep -F executable >/dev/null || unset exe
-			done
-			echo displaying "'$exe'" >&2
-			$exe & exePID=$!
-			echo $exePID > "$pidDir/clean/exe"
-			unset wid exe
-			until [ "$wid" ]; do # xdotool's --sync is SLOW
-				wid=$(xdotool search --pid $exePID)
-			done
-			xdotool windowsize "$wid" $size # my loop is FAST
-			xdotool windowstate --add FULLSCREEN "$wid"
-			xdotool windowsize "$wid" $size
-			xdotool windowstate --add FULLSCREEN "$wid"
-			[ ! "$cycle" ] && wait
-			sleep $t
-			kill "$exePID"
+
+	xterm -bg '#000000' -fg '#000000' -e cat >/dev/null 2>&1 & coverPID=$!
+	coverWID=$(getwid $coverPID)
+	setfull $coverWID
+	xdotool windowactivate $coverWID
+
+	while true; do
+		unset exePID
+		until [ "$exe" ]; do
+			exe=$(find /usr/lib/xscreensaver -maxdepth 1 -type f | grep -v "xscreensaver/xscreensaver\|webcollage\|glitchpeg\|font\|text\|crackberg\|phosphor" | shuf -n1)
+			file --mime-type "$exe" | grep -F executable >/dev/null || unset exe # improve
 		done
-	) & coverPID="$coverPID $!"
+		echo displaying "'$exe'" >&2
+		$exe & exePID=$!
+		echo $exePID > "$pidDir/clean/exe"
+		unset exe
+		setfull "$(getwid $exePID)" &
+		[ ! "$cycle" ] && wait
+		sleep $t
+		kill "$exePID"
+	done &
+	echo $! > "$pidDir/clean/xscreen"
+	echo $coverPID > "$pidDir/coverPID"
 
 	wait "$lockPID"
 	{
-		kill "$fallbackPID"
+		kill "$fallbackPID" # put this stuff in post maybe
 		kill $coverPID
 	} &
 )
 
 # main
 pre
-fallback & fallbackPID=$!
-[ "$1" = "-e" ] && exe=$2 && shift 2 || exe=visualizer
-$exe "$@" & echo $! > "$pidDir/funcPID"
-wait
+exe=$1
+if [ "$exe" ]; then
+	shift
+	fallback & fallbackPID=$!
+	$exe "$@" & echo $! > "$pidDir/funcPID"
+	wait
+else
+	lock
+fi
 post
