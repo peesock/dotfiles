@@ -3,14 +3,16 @@
 # warn feature used with xss-lock
 if [ "$1" = "warn" ]; then
 	trap 'exit 0' TERM INT
-	i=$(xset q | awk '/cycle/{print $4}')
-	while [ $i -gt 0 ]; do
-		t=2000
-		[ $i -eq 1 ] && t=500 # prevents dunst from displaying this when waking up
-		notify-send -r 13 -t $t "Locking" "$i\s"
-		sleep 1
-		i=$((i - 1))
-	done
+	[ -e "$pidDir/lock" ] || {
+		i=$(xset q | awk '/cycle/{print $4}')
+		while [ $i -gt 0 ]; do
+			t=2000
+			[ $i -eq 1 ] && t=500 # prevents dunst from displaying this when waking up
+			notify-send -r 13 -t $t "Locking" "$i\s"
+			sleep 1
+			i=$((i - 1))
+		done
+	}
 	sleep 2147483647 &
 	wait
 	elif [ "$1" = "xss" ]; then
@@ -18,44 +20,44 @@ if [ "$1" = "warn" ]; then
 		shift
 fi
 
-[ "$xss" ] && {
-	waitingList=$(pgrep -ax "^$(ps -o comm= $$)" | grep -v " xss\| warn" | awk '{print $1}')
-	[ "$waitingList" ] && {
-		# ps -o command $waitingList
-		# date
-		waitpid -e $waitingList
-		# echo EXITING
-		# date
-		exit
-	}
-	unset waitingList
-}
-
 programName=$(basename "$0")
 
-trap 'exit' TERM INT
-trap 'kill 0' EXIT
+# for storing inaccesible variables
+pidDir="/tmp/$USER/$programName/$DISPLAY"
+mkdir -p "$pidDir"
 
 # basic lock command
 lock(){
 	alock -a passwd "$@"
 }
 
-# for storing inaccesible variables
-pidDir="/tmp/$USER/$programName"
-mkdir -p "$pidDir"
+[ "$xss" ] && {
+	waitingList=$(pgrep -ax "^$(ps -o comm= $$)" | grep -v " xss\| warn$" | awk '{print $1}')
+	[ "$waitingList" ] && {
+		waitpid -e $waitingList
+		exit
+	}
+	unset waitingList
+}
+
+date
+echo lock activating
 
 pre(){
-	# kill secret services: if someone unlocks my screen, at least they won't have my unencrypted passwords
-	passwords -k -K -q 2>/dev/null &
-
-	dunstctl set-paused true
+	# lock-essential functions
 	find "$pidDir" -type f -print0 | xargs -0 rm 2>/dev/null
+
+	# user-defined functions
+	# kill secret services
+	passwords -k -K -q 2>/dev/null &
+	dunstctl set-paused true
 }
 post(){
-	dunstctl set-paused false
+	# lock-essential functions
 	kill $(cat "$pidDir"/* 2>/dev/null) 2>/dev/null
-	true
+
+	# user-defined functions
+	dunstctl set-paused false
 }
 
 # simple fallback always runs in case the lock cover fails
@@ -175,19 +177,18 @@ xscreensaver()(
 	while true; do
 		unset exePID
 		until [ "$exe" ]; do
-			exe=$(find /usr/lib/xscreensaver -maxdepth 1 -type f | grep -v "xscreensaver/xscreensaver\|webcollage\|font\|text\|phosphor\|mapscroller\|droste\|mirrorblob\|photo" | shuf -n1)
+			exe=$(find /usr/lib/xscreensaver -maxdepth 1 -type f | grep -v "xscreensaver/xscreensaver\|webcollage\|font\|text\|phosphor\|mapscroller\|droste\|mirrorblob\|photo\|flipscreen3d\|carousel" | shuf -n1)
 			file --mime-type "$exe" | grep -F executable >/dev/null || unset exe
 		done
 		echo displaying "'$exe'" >&2
 		$exe --root & exePID=$!
-		echo $exePID > "$pidDir/exe"
+		echo $! > "$pidDir/$!"
 		unset exe
-		[ ! "$cycle" ] && wait
-		(sleep $t; kill $exePID) &
-		wait $exePID 2>/dev/null
-		kill $! 2>/dev/null
+		[ "$cycle" ] &&
+			(sleep "$t"; kill $exePID) & echo $! > "$pidDir/$!"
+		waitpid "$exePID"
 	done &
-	echo $! > "$pidDir/xscreen"
+	echo $! > "$pidDir/$!"
 
 	wait "$lockPID"
 )
@@ -204,3 +205,4 @@ else
 	lock
 fi
 post
+true
