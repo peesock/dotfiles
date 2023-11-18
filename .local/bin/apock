@@ -146,7 +146,7 @@ windowwatcher()(
 	rm "$tmp"
 )
 
-xscreensaver()(
+xscreensaver(){
 	eval 'set -- '$(getopt -o 't:c' -- "$@")
 	t=2m
 	unset exe
@@ -191,7 +191,7 @@ xscreensaver()(
 	echo $! > "$pidDir/$!"
 
 	wait "$lockPID"
-)
+}
 
 # main
 pre
