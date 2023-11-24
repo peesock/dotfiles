@@ -1,17 +1,23 @@
 #!/bin/sh
 
+checkxss()(
+	pgrep -ax "^$(ps -o comm= $$)" | grep -v " xss\| warn$" | awk '{print $1}'
+)
+
 # warn feature used with xss-lock
 if [ "$1" = "warn" ]; then
 	trap 'exit 0' TERM INT
-	[ -e "$pidDir/lock" ] || {
-		i=$(xset q | awk '/cycle/{print $4}')
-		while [ $i -gt 0 ]; do
-			t=2000
-			[ $i -eq 1 ] && t=500 # prevents dunst from displaying this when waking up
-			notify-send -r 13 -t $t "Locking" "$i\s"
-			sleep 1
-			i=$((i - 1))
-		done
+	[ "$(checkxss)" ] || {
+		[ -e "$pidDir/lock" ] || {
+			i=$(xset q | awk '/cycle/{print $4}')
+			while [ $i -gt 0 ]; do
+				t=2000
+				[ $i -eq 1 ] && t=500 # prevents dunst from displaying this when waking up
+				notify-send -r 13 -t $t "Locking" "$i\s"
+				sleep 1
+				i=$((i - 1))
+			done
+		}
 	}
 	sleep 2147483647 &
 	wait
@@ -32,7 +38,7 @@ lock(){
 }
 
 [ "$xss" ] && {
-	waitingList=$(pgrep -ax "^$(ps -o comm= $$)" | grep -v " xss\| warn$" | awk '{print $1}')
+	waitingList=$(checkxss)
 	[ "$waitingList" ] && {
 		waitpid -e $waitingList
 		exit
@@ -41,7 +47,6 @@ lock(){
 }
 
 date
-echo lock activating
 
 pre(){
 	# lock-essential functions
@@ -177,16 +182,18 @@ xscreensaver(){
 	while true; do
 		unset exePID
 		until [ "$exe" ]; do
-			exe=$(find /usr/lib/xscreensaver -maxdepth 1 -type f | grep -v "xscreensaver/xscreensaver\|webcollage\|font\|text\|phosphor\|mapscroller\|droste\|mirrorblob\|photo\|flipscreen3d\|carousel" | shuf -n1)
+			exe=$(find /usr/lib/xscreensaver -maxdepth 1 -type f | grep -v "xscreensaver/xscreensaver\|webcollage\|font\|text\|phosphor\|mapscroller\|droste\|mirrorblob\|photo\|flipscreen3d\|carousel\|esper" | shuf -n1)
 			file --mime-type "$exe" | grep -F executable >/dev/null || unset exe
 		done
 		echo displaying "'$exe'" >&2
 		$exe --root & exePID=$!
 		echo $! > "$pidDir/$!"
 		unset exe
-		[ "$cycle" ] &&
-			(sleep "$t"; kill $exePID) & echo $! > "$pidDir/$!"
+		[ "$cycle" ] && {
+			(sleep "$t" && kill -9 $exePID) & echo $! > "$pidDir/$!"
+		}
 		waitpid "$exePID"
+		[ -d "/proc/$lockPID" ] || break
 	done &
 	echo $! > "$pidDir/$!"
 
