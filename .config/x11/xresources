@@ -1,6 +1,15 @@
 Nsxiv.window.background: #000000
 Nsxiv.window.foreground: #FFFFFF
 
+XTerm*faceName: xft:Cascadia Code, \
+
+	xft:Monospace:style=Medium:size=10,
+
+	XTerm*faceSize: 10
+
+	XTerm*utf8: 2
+
+	XTerm*locale: true
 
 
 	XTerm*foreground: rgb:ff/ff/ff

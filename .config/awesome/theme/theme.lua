@@ -12,7 +12,7 @@ local themes_path = gfs.get_themes_dir()
 
 local theme = {}
 
-theme.font          = "CaskaydiaCove Nerd Font 10"
+theme.font          = "Cascadia Code 10"
 
 theme.bg_normal     = "#1F1F28"
 theme.bg_focus      = "#2F2F38"
