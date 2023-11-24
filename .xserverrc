@@ -1,2 +1,2 @@
 #!/bin/sh
-exec X -nolisten tcp -nolisten local "$@"
+exec X -nolisten tcp -nolisten local "$@" ${OPTS-vt1}

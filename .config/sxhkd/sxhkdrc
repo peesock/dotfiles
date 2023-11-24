@@ -4,6 +4,10 @@
 super + ctrl + q
 	xdotool getactivewindow windowkill
 
+# kill an X client
+super + Escape
+	xkill
+
 
 # Basic Applications
 
@@ -82,10 +86,6 @@ super + shift + d
 super + ctrl + d
 	sudo dmenu_run_history
 
-# kill an X client
-super + Escape
-	xkill
-
 # screenshot full
 super + {_, alt} + s
 	screenshot {temp, _}
@@ -97,8 +97,12 @@ super + {_, alt} + ctrl + s
 	screenshot {temp, _} edit
 
 # lock screen
-super + shift + ctrl + l
-	apock xscreensaver -c
+super + shift + ctrl + l; {x,v,l}
+	apock \
+	{ xscreensaver -c,\
+	visualizer,\
+	_\
+	}
 
 # logout
 super + shift + ctrl + q

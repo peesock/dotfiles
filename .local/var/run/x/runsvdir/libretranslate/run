@@ -1,4 +1,0 @@
-#!/bin/sh
-mkdir -p ~/.cache/libretranslate
-cd ~/.cache/libretranslate || exit 1
-exec libretranslate --threads "$(nproc)"

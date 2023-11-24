@@ -8,7 +8,7 @@ done; unset command
 se() {
 	pwd="$(pwd)"
 	cd ~/.local/bin
-	file="$(fzf)" &&
+	file=${1-$(fzf)} &&
 		$EDITOR "$file"
 	cd "$pwd"
 }
