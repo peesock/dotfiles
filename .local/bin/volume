@@ -1,0 +1,52 @@
+#!/bin/sh -x
+set -u
+
+[ $# -lt 2 ] && exit 1
+[ "$1" = 'a' ] && type=alsa
+[ "$1" = 'p' ] && type=pulse
+
+[ "$2" = 'vol' ] && dir=$3 && value=$4 && action=volume && shift 2
+[ "$2" = 'mute' ] && action=mute
+shift 2
+
+quiet=
+[ $# -gt 0 ] &&
+while true; do
+	[ "$1" = '-q' ] && quiet=true && shift && continue
+	break
+done
+
+[ "$type" = alsa ] && {
+	device=${2-default}
+	[ "$action" = volume ] && {
+		amixer -qMD "$device" sset "$1" "$value%$dir"
+		[ "$quiet" ] ||
+				notify-send -r 13 -u low -t 1000 "$1:" "$(amixer -D "$device" sget "$1" | grep -F '%]' | awk -F'[][]' 'NR==1{ print $2 }')"
+	}
+
+	[ "$action" = mute ] && {
+		amixer -qD "$device" sset "$1" toggle
+		[ "$quiet" ] ||
+			notify-send -r 13 -u low -t 1000 "$1:" "$(amixer -D "$device" sget "$1" | grep -qF '[on]' && printf "on" || printf "off")"
+	}
+}
+
+[ "$type" = pulse ] && {
+	device=${1-"$(pactl get-default-sink)"}
+	[ "$action" = volume ] && {
+		vol=$(pactl get-sink-volume "$device" | awk 'NR==1{print $5+0}')
+			[ "$(echo "$vol $dir $value" | bc)" -ge 100 ] && dir='' value=100
+		pactl set-sink-volume "$device" "$dir$value%"
+		echo pactl set-sink-volume "$device" "$dir$value%"
+		[ "$quiet" ] ||
+			notify-send -r 13 -u low -t 1000 "$device:" "$([ "$dir" ] && echo "$(echo "$vol $dir $value" | bc)%" || echo "$value%")"
+	}
+
+	[ "$action" = mute ] && {
+			pactl set-sink-mute "$device" toggle
+		[ "$quiet" ] ||
+			notify-send -r 13 -u low -t 1000 "$device:" "$(pactl get-sink-mute "$device" | grep -qF 'no' && printf "on" || printf "off")"
+	}
+}
+true
+# note: change printf to echo

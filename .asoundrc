@@ -1,11 +1,12 @@
-pcm.!default { # uses ALSAPCM env var to optionally set different alsa devices. for eg, run `ALSAPCM=voicechat firefox` to (hopefully) allow mic usage by default in browser.
-	type plug
-		slave.pcm {
-			@func getenv
-				vars [ ALSAPCM ]
-				default "desktop"
-		}
-}
+# pcm.!default { # uses ALSAPCM env var to optionally set different alsa devices. for eg, run `ALSAPCM=voicechat firefox` to (hopefully) allow mic usage by default in browser.
+# 	type plug
+# 		slave.pcm {
+# 			@func getenv
+# 				vars [ ALSAPCM ]
+# 				default "desktop"
+# 		}
+# }
+
 pcm.desktop { # asym device, sets up capture and playback into one package
 	type asym
 		playback.pcm "plug:globalrouter"

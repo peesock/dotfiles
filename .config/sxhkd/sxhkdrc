@@ -120,21 +120,22 @@ super + u; {o,s,p,c,u}
 
 # Audio
 # raise audio +4%
-{super + ctrl + bracketright, super + bracketright, super + alt + bracketright}
-	amixer -q -M -D {'hw:PCH' sset 'Master' 4%+; volnotify.sh Master hw:PCH, 'hw:Loopback' sset 'Global' 4%+; volnotify.sh Global, 'hw:Loopback' sset 'MPD' 4%+; volnotify.sh MPD}
+{super + ctrl + bracketright, super + bracketright}
+	{volume a vol + 4 Master hw:PCH, volume p vol + 4 Global}
+super + alt + bracketright
+	mpc volume +4; notify-send -r 13 -u low -t 1000 "MPD:" $(mpc status %volume%)
 
 # lower volume -4%
-{super + ctrl + bracketleft, super + bracketleft, super + alt + bracketleft}
-	amixer -q -M -D {'hw:PCH' sset 'Master' 4%-; volnotify.sh Master hw:PCH, 'hw:Loopback' sset 'Global' 4%-; volnotify.sh Global, 'hw:Loopback' sset 'MPD' 4%-; volnotify.sh MPD}
+{super + ctrl + bracketleft, super + bracketleft}
+	{volume a vol - 4 Master hw:PCH, volume p vol - 4 Global}
+super + alt + bracketleft
+	mpc volume -4; notify-send -r 13 -u low -t 1000 "MPD:" $(mpc status %volume%)
 
 # toggle mute
 super + ctrl + backslash
-	amixer -D 'hw:PCH' -q sset 'Master' toggle && notify-send -r 13 -u low -t 1000 "Master:" \
-		"$(amixer -D 'hw:PCH' sget 'Master' | sed 5q | grep -q '\[on\]' && printf "on" || printf "off")"
+	volume a mute Master hw:PCH
 super + backslash
-	amixer -D 'hw:Loopback' -q sset 'GlobalMute' toggle && notify-send -r 13 -u low -t 1000 "Global:" \
-		"$(amixer -D 'hw:Loopback' sget 'GlobalMute' | sed 5q | grep -q '\[on\]' && printf "on" || printf "off")"
-	# softmute 'Global' 'hw:Loopback'
+	volume p mute Global
 # toggle MPD
 super + alt + backslash
 	mpc toggle; notify-send -r 13 -u low -t 1000 "MPD:" "$(mpc status %state%)"
