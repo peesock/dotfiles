@@ -12,10 +12,9 @@ export PATH=$HOME/.local/bin:$PATH
 export MANPAGER="less"
 export PAGER="less"
 export QT_QPA_PLATFORMTHEME=qt5ct
-export GTK_THEME= 'Dracula' # 'Sweet-Dark-v40'
+export GTK_THEME='Dracula' # 'Sweet-Dark-v40'
 export GOPATH="$HOME/.local/share/go/"
-export DBUS_SESSION_BUS_ADDRESS="autolaunch:" # don't ask me how dbus works
-# export GTK_USE_PORTAL=1
+export DBUS_SESSION_BUS_ADDRESS="autolaunch:"
+# eval $(dbus-launch --auto-syntax)
 export MPD_HOST="$HOME/.local/share/mpd/socket"
-export NBRC_PATH="$HOME/.config/nb/nbrc"
-export NB_DIR="$HOME/.config/nb/"
+export WLR_NO_HARDWARE_CURSORS=1

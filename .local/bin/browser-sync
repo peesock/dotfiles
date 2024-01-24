@@ -1,4 +1,4 @@
-#!/bin/sh -x
+#!/bin/sh
 set -e
 
 command -v rsync >/dev/null 2>&1 || { echo "Needs rsync bud"; exit 1; }

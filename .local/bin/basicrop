@@ -11,8 +11,9 @@
 
 # 1st arg is input file, 2nd arg is output. overwrites input if 2nd arg not specified.
 
-screenW=1920
-screenH=1080
+screenW=$(xrandr --current | grep '\*' | uniq | awk '{print $1}')
+screenH=$(echo $screenW | cut -d'x' -f2)
+screenW=$(echo $screenW | cut -d'x' -f1)
 
 [ -n "$1" ] && INPUT="$1" || echo "Syntax: \$1 = input file, \$2 = output file"
 [ -n "$2" ] && OUTPUT="$2" || OUTPUT="$1"
