@@ -6,7 +6,7 @@ checkxss()(
 
 # warn feature used with xss-lock
 if [ "$1" = "warn" ]; then
-	trap 'exit 0' TERM INT
+	trap 'exit' TERM INT
 	[ "$(checkxss)" ] || {
 		[ -e "$pidDir/lock" ] || {
 			i=$(xset q | awk '/cycle/{print $4}')
@@ -20,7 +20,9 @@ if [ "$1" = "warn" ]; then
 		}
 	}
 	sleep 2147483647 &
+	trap "kill $!" EXIT
 	wait
+	exit
 	elif [ "$1" = "xss" ]; then
 		xss=true
 		shift
@@ -130,11 +132,11 @@ visualizer()(
 	kill -s STOP $pidList 2>/dev/null
 
 	if command -v alacritty >/dev/null; then
-		alacritty -o 'colors.primary.background="#000000"' -o 'window.opacity=1' -o 'window.startup_mode=Fullscreen' -e vis & coverPID=$!
+		alacritty -o 'colors.primary.background="#000000"' -o 'window.opacity=1' -e vis & coverPID=$!
 	else
 		xterm -bg '#000000' -fullscreen -e env TERM=xterm-256color vis & coverPID=$!
 	fi
-	# setfull "$(getwid $coverPID)"
+	setfull "$(getwid $coverPID)"
 	echo $coverPID > "$pidDir/coverPID"
 
 	wait "$lockPID"
