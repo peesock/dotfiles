@@ -8,8 +8,11 @@ ext(){
 base(){
 	sed -z 's/\(.\+\)\..*/\1/'
 }
+reextend(){
+	sed -z "s/\(.*\)\..*\|\$/\1.$newext/" # relies on side effect
+}
 
-renamer(){
+rename()(
 	for file; do
 		[ ! -e "$file" ] && {
 			printf "%s$d" "$file"
@@ -28,40 +31,50 @@ renamer(){
 		done
 		
 		printf "%s$d" "$file"
-		unset name n
 	done
-}
+)
+
+d="\n"
 
 # eval 'set -- '$(getopt -o 'qp' -- "$@")
-d="\n"
+
+[ "$1" = "xargs" ] && {
+	shift
+	"$@"
+	exit
+}
+
 while true; do
 	case "$1" in
 		-d)
 			d=$2
 			shift
 			;;
-		base|ext)
-			[ "$1" = "base" ] && fun=base || fun=ext
-			shift
-			if [ $# -le 0 ]; then $fun
-			else
-				printf "%s\0" "$@" | $fun
-			fi | tr '\0' "$d"
-			exit
-			;;
-		rename)
-			rename=true
-			;;
 		--)
 			shift
 			break
 			;;
 		*)
-			break
+			fun=$1
+			shift
+			[ "$fun" = "reextend" ] && {
+				newext=$1; shift
+			}
+			[ "$fun" = "rename" ] && {
+				if [ $# -le 0 ]; then
+					xargs -d "$d" "$0" xargs rename
+				else
+					rename "$@"
+				fi
+				exit
+			}
+			if [ $# -le 0 ]; then
+				tr "$d" '\0' | $fun
+			else
+				printf "%s\0" "$@" | $fun
+			fi | tr '\0' "$d"
+			exit
 			;;
 	esac
 	shift
 done
-
-
-[ $rename ] && renamer "$@"

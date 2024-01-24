@@ -37,10 +37,6 @@ to secretly overwrite all your pngs into avifs and keep .png extension
 "
 }
 
-extensioner(){
-	echo "$1" | sed "s/\(.*\)\..*\|\$/\1.$2/"
-}
-
 unset type
 eval 'set -- '$(getopt -o 't:fkp:i:o:h' -- "$@")
 while true; do
@@ -106,7 +102,7 @@ while [ $# -gt 0 ]; do
 	[ $typeSet ] ||
 		type=$(echo "$outfile" | sed 's/.*\.//')
 	[ $keep ] ||
-		outfile="$(extensioner "$outfile" "$type")"
+		outfile="$(name reextend "$type" "$outfile")"
 	[ $force ] ||
 		outfile="$(name rename "$outfile")"
 	echo "in: '$infile'"
