@@ -1,54 +1,55 @@
 # dotfiles
-Config files and scripts i use to create my desktop.
+config files and scripts i use.
 
-These dotfiles aim to be as cross-compatible as possible for my preferences, meaning all shell scripts are posix sh scripts and i try to reduce dependencies on magic tools or services like a particular init system.
-![Riced out rizz](img/rice1.png)
+it's essentially an xorg-based window managered highly scripted and hotkey-oriented minimal desktop.
+![rizz](img/rice1.png)
+
+i try to keep script-to-script dependencies minimal, but some tools are just so good that you should get the other script too, like [name](.local/bin/name).
 ## Tools
-
 ### Terminal
 
-- `kitty` terminal for how it renders fonts, especially box drawing characters (see `notcurses-info`). However `alacritty` has all the features i need, and i would still be using it if it had kitty's fonts.
-Config is pretty minimal.
+- `kitty` for superior font rendering, alacritty otherwise. i would use `foot` on wayland
 
-- `neovim` config without 14 gorillion plugins (only has 1 gorillion)
+- `neovim` with fairly simple config
 
-- `lf` terminal file manager with `ctpv` previews, basic config with some extra functions
+- `lf` terminal file manager with `ctpv` previews
 
-- `zsh` for interactive usage, zshrc and "aliasrc" based off of Luke Smith's dotfiles. basic `starship` prompt. zlogin/out work in progress......
-- `dash` used for bare posix scripting
+- `zsh` interactive shell, zshrc and aliasrc based off of Luke Smith, basic `starship` prompt
+
+- `dash` shell for posix scripting
 
 ### Desktop
 
-- `sxhkd` hotkey daemon. This is the ultimate interface for almost everything i do on my desktop
+- `sxhkd` hotkey daemon. this is the most important part of my UI
 
-- `awesomewm` with minimal config based on the provided example config. Only the actual window management libraries are used; other functionality is passed to other programs. `picom` is used for compositing
+- `awesomewm` with minimal config. only the actual window management libs are used; other functionality is passed to other programs like dunst
 
-- `dunst` notification daemon is pretty good, though i don't do many dunsty things with it
+- `dunst` notification daemon
 
 #### Media
 
-- pure ALSA config for general audio needs, has dedicated `mpd` devices. Currently has a bug with underruns... will have to report it
+- pure alsa config available, in process of converting that to pipewire
 
 - `mpd` for music, `ncmpcpp` for an mpd client, and `vis`/`cli-visualizer` for real time music visualization
 
 - `mpv` for videos and audio files
 
-- `feh` and `nsxiv` for image viewing, depending on needs...
+- `feh`, `nsxiv` for image viewing, depending on needs
 
 #### Secrets
 
-- `keepassxc` as a password vault, important document storage, linux secret service provider, and TOTP generator
+- `keepassxc` as password vault, important document storage, secret service provider, and TOTP generator
 - `keepmenu` to quickly access passwords from dmenu
 - `syncthing` to sync and backup password vault between drives and devices
 
 ## Scripts
-See the script [README](.local/bin/README.md) for explanation of the more complicated scripts.
+see the script [README](.local/bin/README.md) for script READMEs.
 
-Some scripts or config files (like [sxhkdrc](.config/sxhkd/sxhkdrc)) will depend on other scripts to work, so if you need them, either include them or edit the script you need.
+some scripts or config files (like [ffconv](.local/bin/ffconv)) will depend on other scripts to work, so if you need them, either include them or edit the script you need.
 
-Nowadays, some scripts aren't actually scripts, and are compiled binaries in my PATH that i don't include in this repo. As of writing, the programs i want to share are in separate repos on my profile. Namely, [mediapick](https://github.com/peesock/mediapick) for an [lfrc](.config/lf/lfrc) function.
+these days i write some scripts in C so they don't take days to complete and can properly parse strings, whose binaries are depended on by other dotfiles. they can be found in separate github repos.
 
 ## Services
-I am currently experimenting with using `runit` to manage services user-side, independent of init, no root access needed. runit is a little messy in how it does things and i'm considering writing my own basic service manager instead. 
+i use a `runit` init system which forced me to learn a little about how runit works, and now i depend on it to manage a bunch of services (managed background processes) on my system. see [here](.local/var/run).
 
-I know systemd exists, and again, i want this to be cross compatible everywhere. and people don't like systemd.
+i wouldn't usually include init things in dotfiles because that's a root task, but runit makes no distinction between root and normal user, allowing for user services independent of init system. systemdeezers, openarcers, dinit fans and s6 enjoyers can all use these services if you install runit.

@@ -1,37 +1,43 @@
 # apock
-Screen locker wrapper.
+screen locker wrapper.
 
-Dependencies:
+dependencies:
 - alock - https://github.com/arkq/alock
 - xss-lock
-- $TERMINAL / alacritty
+
+fancy dependencies:
+- $TERMINAL / alacritty by default
 - cli-visualizer
+- xscreensaver screensavers, ie everything in `/usr/lib/xscreensaver`
 
-If you have that music visualizer, it will be displayed.
-
-Use `apock` to lock from cli
-Use `apock xss` and `apock warn` with xss-lock, like
+## usage
+use `apock` to lock from cli
+use `apock xss` and `apock warn` with xss-lock, like
 ```
 xss-lock -n 'apock warn' -- apock xss'
+```
+specify a screensaver function:
+```
+xss-lock -n 'apock warn' -- apock xss visualizer &
+...
+apock xscreensaver
 ```
 
 
 # basicrop
-Basic cropping script.
+image cropping script.
 
-Dependencies:
+dependencies:
 - feh
 - hacksaw
 - sxhkd
 - graphicsmagick
 - bc
 
-These deps can be easily replaced with other programs. `hacksaw` can be replaced with `slop`, `gm convert` (`graphicsmagick`) with `convert` (imagemagick), or `feh` with `nsxiv` (with some argument tweaking). It's a very simple script, with the most complex part being some multiplication.
+hacksaw and graphicsmagick are easily replacable by slop and imagemagick.
 
 ## usage
-Set screen dimensions in the file (default is 1920x1080).
-
-Usage: `basicrop [INFILE] [OUTFILE]`. If OUTFILE isn't specified, INFILE will always be overwritten.
+`basicrop infile outfile` if outfile isn't specified, infile will always be overwritten.
 - 'c' to crop
 - 'u' to undo
 - 'A' to toggle anti-aliasing
@@ -39,17 +45,30 @@ Usage: `basicrop [INFILE] [OUTFILE]`. If OUTFILE isn't specified, INFILE will al
 - 'Return' to save file
 - 'shift' + 'Return' to overwrite file
 
-Because there's no way to communicate the image's location to the script, you cannot zoom in or translate.
+because there's no way to communicate the image's location to the script, you cannot zoom in or translate.
 
-## how
-`basicrop input output` will open `input` in fullscreen mode. With your screen dimensions, this acts like a ruler by constraining the sides of your image to the sides of the screen. Cropping will simply take the dimensions of the screen captured in an area, and scale it up or down to the size of the image. Those dimensions are trimmed if needed, and then fed to graphicsmagick to produce `output`.
+### how
+`basicrop input output` will open `input` in fullscreen mode. this way, your screen dimensions act as a ruler, and we know where to crop based on hacksaw output.
 
-sxhkd is used to temporarily steal a set of keys from your keyboard to use for the script. I'm sure there's a way to do it with more simple X tools, but if i wanted to make this more of a PITA then i would've make a Real image editor in C, with zooming and translating and drawing and such, but i didn't feel like it.
+sxhkd is how we take keyboard input, which sucks, but i don't care.
+
+
+# browser-sync
+moves firefox profile to memory for speed and disk life.
+
+## usage
+`browser-sync [-d] [-e] browser-name browser-binary profile-dir`
+- -d - runs it as a daemon, constantly syncing
+- -e - as a daemon, exit when browser-binary exits
+
+`browser-sync ff-dev firefox ~/.mozilla/firefox` will sync firefox profile to ram one time.
+
+`browser-sync -d -e ff-dev firefox ~/.mozilla/firefox` will sync firefox profile to ram once every 30 minutes, and then sync and exit on firefox exit.
 
 
 
 # dt
-My dotfile management script. It uses hardlinks instead of symlinks to manage the repo, following the argument of [this blogpost](https://port19.xyz/tech/hardlinks/).
+dotfile git management script. it uses hardlinks instead of symlinks to manage the repo, following the argument of [this blogpost](https://port19.xyz/tech/hardlinks/).
 
 ## usage
 - init - run git init on git dir
@@ -63,9 +82,9 @@ My dotfile management script. It uses hardlinks instead of symlinks to manage th
 - help - helps
 - dotpath - returns either the git (default) or working (-R) path of specified argument
 
-The default dot directory and working directory are ~/.dotfiles and ~, respectively.
-They can be changed with the `-g` and `-w` flags.
-To simplify this, you could use aliases or edit the defaults directly.
+the default dot directory and working directory are ~/.dotfiles and ~. they can be changed with the `-g` and `-w` flags. to simplify this, you could use aliases or edit the defaults directly.
+
+note to self: missing function to detect when home files are removed externally (not through `dt rm`).
 
 ## examples
 normal usage:
@@ -96,16 +115,15 @@ removing '.config/kitty/kitty.conf' and '/home/apoc/.dotfiles/.config/kitty/kitt
 
 $ dt g commit -m "i HATE kitty"
 ```
-adding extra files without cluttering your home directory:
+adding git files without cluttering your home directory:
 `$ dt g add ~/.dotfiles/README.md`
-
 
 Also see my ~/.zshrc to add git autocomplete.
 
 
+
 # maptoggle.sh
 toggles an X window between mapped and unmapped, ie, visible/invisible, using custom window properties to distinguish windows. Uses xdotool and xprop.
-
 
 ## usage
 `maptoggle.sh ID "command args..." [options]`
@@ -116,27 +134,26 @@ toggles an X window between mapped and unmapped, ie, visible/invisible, using cu
 
 `-echo` will echo the window id to stdout when making the window visible, for use in scripts like when enabling persistent floating state or window sizes.
 
-Return code 2 means the program was just started for the first time.
+return code 2 means the program was just started for the first time.
 
 ## examples
-Most window properties are in the EWMH spec that your WM most likely supports. For these, you can use wmctrl to control them. Some properties, like floating/tiling status, are not in the spec, and depend on your specific window manager. For awesomewm, this works:
+most window properties are in the EWMH spec that your WM most likely supports. for these, you can use wmctrl to control them. some properties, like floating/tiling status, are not in the spec, and depend on your specific window manager. for awesomeWM:
 ```sh
 winid=$(maptoggle.sh "magic id" $TERMINAL -echo)
 awesome-client "local c = nil ; for _, c2 in ipairs(client.get()) do ; if c2.window == $winid then ; c = c2 ; break ; end ; end ; if not c then return end ; c.floating = true"
 ```
-which sucks but I don't care.
 
-For fullscreen in any EWMH window manager:
+fullscreen in any EWMH window manager:
 ```sh
 winid=$(maptoggle.sh "magic id" $TERMINAL -echo); wmctrl -ir $winid -b add,fullscreen
 ```
 
-Place a 50% sized window in the middle of the screen:
+place a 50% x 50% sized window in the middle of the screen:
 ```sh
 winid=$(maptoggle.sh "magic id" $TERMINAL -echo); xdotool windowmove $winid 25% 25% ; xdotool windowsize $winid 50% 50%
 ```
 
-Example of an awesomewm music player toggle:
+example of an awesomewm music player toggle:
 ```sh
 wid=$(maptoggle.sh "musically" "$TERMINAL -e ncmpcpp" -echo)
 [ -n $wid ] &&
@@ -148,31 +165,59 @@ unset wid
 
 
 
+# name
+utility for naming files.
+
+## usage
+`name [-d DELIM] FUNCTION [ARG] [FILENAME]...`
+-d sets input and output deliminator.
+
+functions:
+- rename - renames files based on `image.png, image-1.png, image-2.png` syntax
+- reextend EXT - replace or add new extensions
+- base - return filename with no extension
+- ext - return only extension
+
+arguments can also be piped in:
+```
+$ ls
+2021-12-24_21-06.png
+20220731-021309_473.png
+
+$ ls | name rename
+2021-12-24_21-06-1.png
+20220731-021309_473-1.png
+```
+
+
+
 # ocrgrab
 small desktop barcode and text grabber
 
 dependencies:
-- `zbar`
-- `tesseract` (and the lang models you want)
-- `hacksaw` and `shotgun` or edit for another tool
+- zbar
+- tesseract (and the lang models you want)
+- hacksaw
+- shotgun
 
 crops a section of the screen, notifies if a barcode, text, or nothing was captured, and sends to clipboard.
 
 
 
 # screenshot
-Minimal screenshot script for X
+Xorg screenshot script
 
 dependencies:
-- `shotgun`
-- `hacksaw`
-- `basicrop` - optional cropping component
+- shotgun
+- hacksaw
+- xclip
+- basicrop - optional, for cropping
 
-`shotgun` and `hacksaw` can be replaced with `maim` and `slop`. 
-Replacing the editor is harder, but still straightforward. `basicrop` shrimply takes an input and output file, so if another editor can do something like that, then no problem.
+shotgun and hacksaw could be replaced with maim and slop.
+replacing the editor is harder, but it's just a shell script.
 
 ## usage
-First set `$fotoDir` to a default dir for your screenshots, and change `$foto` for a different default filename.
+first set `$fotoDir` in the script to a default dir for your screenshots.
 ```
 Usage: screenshot [options]
 
@@ -183,23 +228,19 @@ temp            send file to /tmp for temporary storage and clipboarding
 file            file-only, don't save image to clipboard
 edit            edit the most recently-taken screenshot
 ```
-## examples
-Crop a screenshot to out.png without copying to clipboard:
 
+## examples
+crop a screenshot to out.png without copying to clipboard:
 `screenshot crop -o out.png file`
 
-Take a screenshot to out.png without the clipboard while cropping:
-
+take a screenshot to out.png without the clipboard while cropping:
 `screenshot -o out.png file crop`
 
-Remove clipboard copying and take a cropped screenshot to out.png:
-
+remove clipboard copying and take a cropped screenshot to out.png:
 `screenshot file crop -o out.png`
 
-Take a full screenshot to /tmp:
-
+take a full screenshot to /tmp:
 `screenshot temp`
 
-Edit:
-
+edit:
 `screenshot edit` to save in `$fotoDir`, or `screenshot temp edit` to keep the result in /tmp
