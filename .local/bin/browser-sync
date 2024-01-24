@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/sh -x
 set -e
 
 command -v rsync >/dev/null 2>&1 || { echo "Needs rsync bud"; exit 1; }
@@ -7,25 +7,28 @@ time=30m
 
 [ "$1" = "-d" ] && {
 		daemon=true && shift &&
-			[ "$1" = "-e" ] && exitDown=true && shift
+			[ "$1" = "-e" ] && exitDown=true && exitDownWait=true && shift
 		trap "exit" TERM INT
 		trap 'kill 0' EXIT
 }
 
-bin=$(basename "$(command -v "$1")")
-[ -z "$bin" ] && {
+# args
+binStart=$(basename "$(command -v "$1")")
+[ -z "$binStart" ] && {
 	echo "'$1' not a valid binary" >&2
 	exit 1
 }
 
-linkDir=$2
+binRun="$2"
+
+linkDir=$3
 [ -h "$linkDir" ] || [ -d "$linkDir" ] || {
 	echo "'$linkDir' is not a dir" >&2
 	exit 1
 }
 
 staticDir="${linkDir}-static"
-memDir="/dev/shm/$bin-$(basename "$linkDir")-$USER"
+memDir="/dev/shm/$binStart-$(basename "$linkDir")-$USER"
 
 # make mem dir
 [ ! -r "$memDir" ] && {
@@ -52,23 +55,28 @@ if [ ! $daemon ]; then
 	sync
 else
 	while true; do
-		if pidof "$bin" >/dev/null; then
-			# bin is up
+		if pidof "$binRun" >/dev/null; then
+			echo bin is up
 			unset syncerPID
+			unset exitDownWait
 			{
 				while true; do
 					sleep "$time"
 					sync
 				done
 			} & syncerPID=$!
-			pidwait -x "$bin"
-			# bin was closed
+			pidwait -x "$binRun"
+			echo bin was closed
 			kill $syncerPID
 			wait
 			sync
 		else
-			# bin is down
-			[ "$exitDown" ] && break
+			echo bin is down
+			if [ "$exitDown" ]; then
+				[ "$exitDownWait" ] || break
+				echo waiting once
+				unset exitDownWait
+			fi
 			sleep 5
 		fi
 	done
