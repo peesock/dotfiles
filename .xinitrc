@@ -2,7 +2,7 @@
 # startup services for display sessions
 
 setbg --stretch & # set background
-xrandr --dpi 102 # Set DPI.
+# xrandr --dpi 102 # Set DPI.
 xorg.sh # fixes keyboard assshittery
 
 xrdb ${XDG_CONFIG_HOME:-$HOME/.config}/x11/xresources & xrdbpid=$!	# use Xresources colors/settings on startup

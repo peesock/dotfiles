@@ -21,13 +21,13 @@ done
 	[ "$action" = volume ] && {
 		amixer -qMD "$device" sset "$1" "$value%$dir"
 		[ "$quiet" ] ||
-				notify-send -r 13 -u low -t 1000 "$1:" "$(amixer -D "$device" sget "$1" | grep -F '%]' | awk -F'[][]' 'NR==1{ print $2 }')"
+				notify-send -r 13 -u low -t 1000 "$1:" "$(amixer -D "$device" sget "$1" | grep -F '%]' | awk -F'[][]' 'NR==1{ print $2 }')" &
 	}
 
 	[ "$action" = mute ] && {
 		amixer -qD "$device" sset "$1" toggle
 		[ "$quiet" ] ||
-			notify-send -r 13 -u low -t 1000 "$1:" "$(amixer -D "$device" sget "$1" | grep -qF '[on]' && printf "on" || printf "off")"
+			notify-send -r 13 -u low -t 1000 "$1:" "$(amixer -D "$device" sget "$1" | grep -qF '[on]' && printf "on" || printf "off")" &
 	}
 }
 
@@ -37,15 +37,14 @@ done
 		vol=$(pactl get-sink-volume "$device" | awk 'NR==1{print $5+0}')
 			[ "$(echo "$vol $dir $value" | bc)" -ge 100 ] && dir='' value=100
 		pactl set-sink-volume "$device" "$dir$value%"
-		echo pactl set-sink-volume "$device" "$dir$value%"
 		[ "$quiet" ] ||
-			notify-send -r 13 -u low -t 1000 "$device:" "$([ "$dir" ] && echo "$(echo "$vol $dir $value" | bc)%" || echo "$value%")"
+			notify-send -r 13 -u low -t 1000 "$device:" "$([ "$dir" ] && echo "$(echo "$vol $dir $value" | bc)%" || echo "$value%")" &
 	}
 
 	[ "$action" = mute ] && {
 			pactl set-sink-mute "$device" toggle
 		[ "$quiet" ] ||
-			notify-send -r 13 -u low -t 1000 "$device:" "$(pactl get-sink-mute "$device" | grep -qF 'no' && printf "on" || printf "off")"
+			notify-send -r 13 -u low -t 1000 "$device:" "$(pactl get-sink-mute "$device" | grep -qF 'no' && printf "on" || printf "off")" &
 	}
 }
 true
