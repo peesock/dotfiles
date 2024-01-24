@@ -1,8 +1,0 @@
-#!/bin/sh
-while true; do
-	pidwait -x Xorg
-	sleep 1
-	pidof Xorg >/dev/null 2>&1 && continue # in case pidwait..crashes or somehting
-	break
-done
-sv down ../../

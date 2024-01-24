@@ -8,11 +8,12 @@ xorg.sh # fixes keyboard assshittery
 xrdb ${XDG_CONFIG_HOME:-$HOME/.config}/x11/xresources & xrdbpid=$!	# use Xresources colors/settings on startup
 
 xsetroot -cursor_name left_ptr # ensures correct cursor on X root window
-
 unclutter --ignore-scrolling --start-hidden &
-export -p > "$HOME/.local/var/run/x/env"
-svu up x
-svu status x
+
+# restart, so it has new Xorg env vars
+sv x "$HOME/.local/var/run/xapps"
+runsv "$HOME/.local/var/run/xapps" &
+until svu u xapps; do sleep 0.1; done
 
 # Ensure that xrdb has finished running before moving on to start the WM/DE.
 [ -n "$xrdbpid" ] && wait "$xrdbpid"
