@@ -17,8 +17,11 @@ for serv in $services; do
 done
 
 # wait for Xorg to die
+trap 'exit' INT TERM
+trap 'pkill -P $$' EXIT
 while true; do
-	pidwait -x Xorg
+	pidwait -x Xorg &
+	wait $! # so trap can take effect
 	sleep 1
 	pidof Xorg >/dev/null 2>&1 && continue # in case pidwait..crashes or somehting
 	break

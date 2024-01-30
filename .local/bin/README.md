@@ -71,20 +71,19 @@ moves firefox profile to memory for speed and disk life.
 dotfile git management script. it uses hardlinks instead of symlinks to manage the repo, following the argument of [this blogpost](https://port19.xyz/tech/hardlinks/).
 
 ## usage
-- init - run git init on git dir
-- link - recursively hardlink all arguments to git dir (requires GNU cp)
-- link -R - runs link in reverse, restoring your dotfiles from git. use -f to force
-- add - run link and git add on all arguments
-- mv - mv + git mv, only 2 args (i need to rewrite this stupid program in C)
-- rm - recursively remove *both* existing hardlinks (and folders) of argument
-- run - run arguments as if you were in the git repo (if outside, defaults to top)
-- g - runs git with modified options and file paths to change the dot repo
-- help - helps
-- dotpath - returns either the git (default) or working (-R) path of specified argument
+- add          run link and git add on all arguments
+- dotpath      returns either the git (default) or working (-R) path of specified argument
+- g            runs git with modified options and file paths to change the dot repo
+- help         helps
+- init         run git init on git dir
+- link         recursively hardlink all arguments to git dir (requires GNU cp)
+- link -R      runs link in reverse, restoring your dotfiles from git. use -f to force
+- mv           mv + git mv, only 2 args (i need to rewrite this stupid program in C)
+- rm           recursively remove *both* existing hardlinks (and folders) of argument
+- run          run arguments as if you were in the git repo (if outside, defaults to top)
+- unlinked     list files in git dir that don't exist in working dir
 
 the default dot directory and working directory are ~/.dotfiles and ~. they can be changed with the `-g` and `-w` flags. to simplify this, you could use aliases or edit the defaults directly.
-
-note to self: missing function to detect when home files are removed externally (not through `dt rm`).
 
 ## examples
 normal usage:

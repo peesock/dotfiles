@@ -1,5 +1,5 @@
 #!/bin/sh
 . ./conf
 for serv in $services; do
-	sv x "../$serv"
+	sv d "../$serv"
 done

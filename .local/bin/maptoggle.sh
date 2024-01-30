@@ -1,5 +1,6 @@
 #!/bin/sh
-# new feature: allow tagging existing windows
+# note: allow tagging existing windows
+# noter: the stupid X atom tagging method is unnecessary
 
 uid="$(echo "$1" | tr -d ',')"
 exe="$2"
@@ -23,9 +24,14 @@ echo_winid(){
 execute(){
 	[ $# -lt 2 ] && usage 1
 	sed -i.bak "/^$uid,/d" "$path/processes"
-	# instead of "exec $exe & pid=$!", fork the process to ensure the script
+
+	# instead of `commadn $exe & pid=$!`, fork the process to ensure the script
 	# exits, and use a file to grab stdout independently of its process.
-	tmp=$(mktemp); setsid -f sh -c "$exe & echo \$!" > "$tmp"; pid=$(cat $tmp); rm "$tmp"
+	tmp=$(mktemp)
+	setsid -f sh -c "command $exe & echo \$!" > "$tmp"
+	pid=$(cat "$tmp")
+	rm "$tmp"
+
 	state=1
 	xdotool search --sync --pid "$pid" >/dev/null; sleep 0.2 #workaround a funny segfault
 	winid="$(xdotool search --sync --pid "$pid")"

@@ -14,16 +14,17 @@ options:
 -w dir       set working directory to dir (default '\'$workingDir\'')
 
 functions:
+add          run link and git add on all arguments
+dotpath      returns either the git (default) or working (-R) path of specified argument
+g            runs git with modified options and file paths to change the dot repo
+help         helps
 init         run git init on git dir
 link         recursively hardlink all arguments to git dir (requires GNU cp)
 link -R      runs link in reverse, restoring your dotfiles from git. use -f to force
-add          run link and git add on all arguments
-rm           recursively remove *both* existing hardlinks (and folders) of argument
 mv           mv + git mv, only 2 args (i need to rewrite this stupid program in C)
+rm           recursively remove *both* existing hardlinks (and folders) of argument
 run          run arguments as if you were in the git repo (if outside, defaults to top)
-g            runs git with modified options and file paths to change the dot repo
-help         helps
-dotpath      returns either the git (default) or working (-R) path of specified argument
+unlinked     list files in git dir that don'\''t exist in working dir
 "
 }
 '
@@ -102,6 +103,10 @@ mv()(
 	[ $# -ne 2 ] && echo 2 args pls >&2 && exit 1
 	command mv -v "$1" "$2"
 	g mv -v "$(dotpath "$1")" "$(dotpath "$2")"
+)
+
+unlinked()(
+	g ls-files | awk -v prefix="$workingDir" '{print prefix "/" $0}' | while read file; do [ -e "$file" ] || echo "$file"; done
 )
 
 argpath()(

@@ -12,6 +12,8 @@ reextend(){
 	sed -z "s/\(.*\)\..*\|\$/\1.$newext/" # relies on side effect
 }
 
+# renames files like image.png to image-1.png to image-2.png.
+# renaming image-2.png makes image-2-1.png instead of guessing.
 rename()(
 	for file; do
 		[ ! -e "$file" ] && {
