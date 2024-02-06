@@ -51,13 +51,16 @@ memDir="$tmpDir/$name-$(basename "$linkDir")"
 unpackFile="$tmpDir/$(basename "$memDir").unpacked"
 
 cleanup(){
-	[ -h "$linkDir" ] && {
+	if [ -h "$linkDir" ]; then
+		echo cleaning
 		rm -v -- "$linkDir"
 		mv -Tfv -- "$staticDir" "$linkDir"
 		rm -v -- "$unpackFile"
 		echo "removing '$memDir'"
 		rm -rf -- "$memDir"
-	}
+	else
+		echo "'$linkDir' not a symlink, not cleaning"
+	fi
 }
 
 [ "$clean" ] && {
@@ -76,7 +79,7 @@ startup(){
 	}
 	# link mem dir to linkDir
 	[ "$(readlink "$linkDir")" = "$memDir" ] || {
-		mv "$linkDir" "$staticDir"
+		mv -T "$linkDir" "$staticDir"
 		ln -sT "$memDir" "$linkDir"
 	}
 }
