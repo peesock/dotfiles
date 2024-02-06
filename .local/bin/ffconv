@@ -51,7 +51,7 @@ while true; do
 			for preset in $2; do
 				case $preset in
 					web)
-						outOpts="$outOpts -c:v libx264 -pix_fmt yuv420p -c:a aac"
+						outOpts="$outOpts -c:v libx264 -pix_fmt yuv420p -vf crop=trunc(iw/2)*2:trunc(ih/2)*2 -c:a aac"
 						type=mp4
 						typeSet=true
 						;;
