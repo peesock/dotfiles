@@ -1,4 +1,4 @@
 #!/bin/sh
-browser-sync firefox ~/.mozilla/firefox
+memory-sync firefox ~/.mozilla/firefox
 firefox-developer-edition &
-browser-sync -d -e firefox ~/.mozilla/firefox -p $!
+memory-sync -d -e firefox ~/.mozilla/firefox -p $!
