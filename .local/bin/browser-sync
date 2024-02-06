@@ -1,84 +1,144 @@
 #!/bin/sh
 set -e
 
-command -v rsync >/dev/null 2>&1 || { echo "Needs rsync bud"; exit 1; }
+command -v rsync >/dev/null 2>&1 || { echo "needs rsync bud"; exit 1; }
+
+# options:
+# -d: launch a daemon, add -e to exit on process death (doesn't work with pid)
+# -c: clean up files on daemon exit, or just clean files if no daemon. does NOT sync first.
+# -t: set sync wait time
+# 1: unique name
+# 2: copied directory
+# [3]: command or executable file for monitored daemoning, can use pid instead with -p <pid>
 
 time=30m
+tmpDir=/dev/shm/$USER/$(basename "$0")
+mkdir -p "$tmpDir"
 
-[ "$1" = "-d" ] && {
+while true; do
+	[ "$1" = "--" ] && shift && break
+	[ "$1" = "-t" ] && time=$2 && shift 2 && continue
+	[ "$1" = "-d" ] && {
 		daemon=true && shift &&
 			[ "$1" = "-e" ] && exitDown=true && exitDownWait=true && shift
-		trap "exit" TERM INT
-		trap 'kill 0' EXIT
-}
+		continue
+	}
+	[ "$1" = "-c" ] && clean=true && shift && continue
+	break
+done;
 
-# args
-binStart=$(basename "$(command -v "$1")")
-[ -z "$binStart" ] && {
-	echo "'$1' not a valid binary" >&2
-	exit 1
-}
-
-binRun="$2"
-
-linkDir=$3
+[ $# -lt 2 ] && exit 1
+name=$1
+linkDir=$2
 [ -h "$linkDir" ] || [ -d "$linkDir" ] || {
 	echo "'$linkDir' is not a dir" >&2
 	exit 1
 }
 
+
+if [ "$3" = "-p" ]; then
+	pid=$4
+	[ "$pid" ] || exit 1
+else
+	bin=$(basename "$(command -v "$1")")
+	[ -z "$bin" ] && unset bin
+fi
+
 staticDir="${linkDir}-static"
-memDir="/dev/shm/$binStart-$(basename "$linkDir")-$USER"
+memDir="$tmpDir/$name-$(basename "$linkDir")"
+unpackFile="$tmpDir/$(basename "$memDir").unpacked"
 
-# make mem dir
-[ ! -r "$memDir" ] && {
-	mkdir -m0700 "$memDir"
+cleanup(){
+	[ -h "$linkDir" ] && {
+		rm -v -- "$linkDir"
+		mv -Tfv -- "$staticDir" "$linkDir"
+		rm -v -- "$unpackFile"
+		echo "removing '$memDir'"
+		rm -rf -- "$memDir"
+	}
 }
 
-# link mem dir to linkDir
-[ "$(readlink "$linkDir")" != "$memDir" ] && {
-	mv "$linkDir" "$staticDir"
-	ln -s "$memDir" "$linkDir"
-}
-
-sync(){
-	# notify-send syncing
-	if [ -e "$linkDir/.unpacked" ]; then
-		rsync -av --delete --exclude .unpacked "$linkDir/" "$staticDir"
+[ "$clean" ] && {
+	if [ "$daemon" ]; then
+		trap 'cleanup' EXIT
 	else
-		rsync -av "$staticDir/" "$linkDir"
-		touch "$linkDir/.unpacked"
+		cleanup
+		exit
 	fi
 }
 
-if [ ! $daemon ]; then
+startup(){
+	# make mem dir
+	[ -r "$memDir" ] || {
+		mkdir -m0700 "$memDir"
+	}
+	# link mem dir to linkDir
+	[ "$(readlink "$linkDir")" = "$memDir" ] || {
+		mv "$linkDir" "$staticDir"
+		ln -s "$memDir" "$linkDir"
+	}
+}
+startup
+
+sync(){
+	# notify-send syncing
+	echo syncing
+	if [ -e "$unpackFile" ]; then
+		# sync from ram to disk
+		rsync -aHAWXv --delete "$linkDir/" "$staticDir"
+	else
+		# sync from disk to ram
+		rsync -aHAWXv "$staticDir/" "$linkDir" &&
+			touch "$unpackFile" ||
+			echo "epic fail" && exit 1
+	fi
+}
+
+if [ ! "$daemon" ]; then
 	sync
 else
-	while true; do
-		if pidof "$binRun" >/dev/null; then
-			echo bin is up
-			unset syncerPID
-			unset exitDownWait
-			{
-				while true; do
-					sleep "$time"
-					sync
-				done
-			} & syncerPID=$!
-			pidwait -x "$binRun"
-			echo bin was closed
-			kill $syncerPID
+	daemon(){
+		{
+			trap 'kill -- $!' TERM INT
+			while true; do
+				sleep "$time" &
+				wait
+				sync
+			done
+		} & syncerPID=$!
+		"$@" # waiter
+		echo process was killed
+		kill $syncerPID
+		wait
+		sync
+	}
+
+	if [ "$bin" ]; then
+		while true; do
+			if pidof "$bin" >/dev/null; then
+				echo bin is up
+				unset syncerPID
+				unset exitDownWait
+				daemon pidwait -x "$bin"
+			else
+				echo bin is down
+				if [ "$exitDown" ]; then
+					[ "$exitDownWait" ] || break
+					echo waiting once
+					unset exitDownWait
+				fi
+				sleep 5
+			fi
+		done
+	elif [ "$pid" ]; then
+		daemon waitpid "$pid"
+	else
+		echo "daemon will keep running until it's killed."
+		trap 'kill -- $!' TERM INT
+		while true; do
+			sleep "$time" &
 			wait
 			sync
-		else
-			echo bin is down
-			if [ "$exitDown" ]; then
-				[ "$exitDownWait" ] || break
-				echo waiting once
-				unset exitDownWait
-			fi
-			sleep 5
-		fi
-	done
+		done
+	fi
 fi
-
