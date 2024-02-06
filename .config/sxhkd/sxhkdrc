@@ -147,20 +147,27 @@ super + ctrl + F12
 	record menukill
 super + ctrl + shift + F12
 	record kill all
-super + F1
-	record screen
-super + shift + F1
-	record screen crop
-super + ctrl + F1
-	record kill screen
-super + F2
-	record wcam
-super + ctrl + F2
-	record kill wcam
-super + F4
-	record clipper #note: clip by running twice. can only be killed by below command
-super + ctrl + F4
-	record kill clipper
+
+~super + F1
+	pidof obs >/dev/null || obs --minimize-to-tray --profile lossless --startrecording
+
+~super + ctrl + F4
+	pidof obs >/dev/null || obs --minimize-to-tray --profile lossless --startreplaybuffer
+
+# super + F1
+# 	record screen
+# super + shift + F1
+# 	record screen crop
+# super + ctrl + F1
+# 	record kill screen
+# super + F2
+# 	record wcam
+# super + ctrl + F2
+# 	record kill wcam
+# super + F4
+# 	record clipper #note: clip by running twice. can only be killed by below command
+# super + ctrl + F4
+# 	record kill clipper
 
 #Epic.
 #toggle oneko
