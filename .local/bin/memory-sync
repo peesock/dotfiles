@@ -4,19 +4,20 @@ set -e
 command -v rsync >/dev/null 2>&1 || { echo "needs rsync bud"; exit 1; }
 
 # options:
-# -d: launch a daemon, add -e to exit on process death (doesn't work with pid)
+# -d [-e]: launch a daemon, -e to exit on process death (doesn't work with pid)
 # -c: clean up files on daemon exit, or just clean files if no daemon. does NOT sync first.
 # -t: set sync wait time
+# -s <dir>: sync files somewhere else instead of /dev/shm
 # 1: unique name
 # 2: copied directory
 # [3]: command or executable file for monitored daemoning, can use pid instead with -p <pid>
 
 time=30m
 tmpDir=/dev/shm/$USER/$(basename "$0")
-mkdir -p "$tmpDir"
 
 while true; do
 	[ "$1" = "--" ] && shift && break
+	[ "$1" = "-s" ] && tmpDir=$2 && shift 2 && continue
 	[ "$1" = "-t" ] && time=$2 && shift 2 && continue
 	[ "$1" = "-d" ] && {
 		daemon=true && shift &&
@@ -26,6 +27,7 @@ while true; do
 	[ "$1" = "-c" ] && clean=true && shift && continue
 	break
 done;
+mkdir -p "$tmpDir"
 
 [ $# -lt 2 ] && exit 1
 name=$1
@@ -75,7 +77,7 @@ startup(){
 	# link mem dir to linkDir
 	[ "$(readlink "$linkDir")" = "$memDir" ] || {
 		mv "$linkDir" "$staticDir"
-		ln -s "$memDir" "$linkDir"
+		ln -sT "$memDir" "$linkDir"
 	}
 }
 startup
@@ -89,8 +91,9 @@ sync(){
 	else
 		# sync from disk to ram
 		rsync -aHAWXv "$staticDir/" "$linkDir" &&
-			touch "$unpackFile" ||
-			echo "epic fail" && exit 1
+			touch "$unpackFile" || {
+				echo "epic fail" && exit 1
+			}
 	fi
 }
 
