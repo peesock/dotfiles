@@ -1,0 +1,9 @@
+#!/bin/sh
+dir=$HOME/.local/var
+[ -d "$dir/lib/mariadb" ] || {
+	mkdir -p "$dir/lib/mariadb"
+	mariadb-install-db --ldata="$dir/lib/mariadb"
+}
+[ -d "$dir/run/mariadb" ] ||
+	mkdir -p "$dir/run/mariadb"
+exec mariadbd --datadir="$dir/lib/mariadb" --socket="$dir/run/mariadb/mariadbd.sock"

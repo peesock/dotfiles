@@ -1,0 +1,3 @@
+#!/bin/sh
+sv check ../mariadb | grep -F 'ok: run:' >/dev/null || sv u ../mariadb
+exec firefox-syncstorage --config=$HOME/.config/firefox-syncstorage/firefox-syncstorage.toml
