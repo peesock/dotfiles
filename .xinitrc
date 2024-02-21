@@ -11,8 +11,9 @@ xsetroot -cursor_name left_ptr # ensures correct cursor on X root window
 unclutter --ignore-scrolling --start-hidden &
 
 # restart, so it has new Xorg env vars
-sv x "$HOME/.local/var/run/xapps"
-runsv "$HOME/.local/var/run/xapps" &
+svu x xapps
+while svu check xapps; do sleep 0.1; done
+runsv "$HOME/.local/var/run/runit/xapps" &
 until svu u xapps; do sleep 0.1; done
 
 # Ensure that xrdb has finished running before moving on to start the WM/DE.
