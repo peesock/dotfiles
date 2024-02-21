@@ -1,2 +1,2 @@
 #!/bin/sh
-SVDIR="$HOME/.local/var/run" 'sv' "$@"
+SVDIR="$HOME/.local/var/run/runit" 'sv' "$@"

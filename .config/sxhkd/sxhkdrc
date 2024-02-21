@@ -156,8 +156,8 @@ super + ctrl + shift + F12
 
 # super + F1
 # 	record screen
-# super + shift + F1
-# 	record screen crop
+super + shift + F1
+	record screen crop
 # super + ctrl + F1
 # 	record kill screen
 # super + F2
