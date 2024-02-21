@@ -1,6 +1,7 @@
 #!/bin/sh
-set -e
+# todo: better daemon sleeping (no tmp files), better arguments
 
+# checks
 command -v rsync >/dev/null 2>&1 || { echo "needs rsync bud. exiting"; exit 1; }
 
 [ $# -lt 2 ] && echo 'need at least 2 arguments. exiting' && exit 1
@@ -8,50 +9,74 @@ command -v rsync >/dev/null 2>&1 || { echo "needs rsync bud. exiting"; exit 1; }
 for arg; do [ -z "$arg" ] && echo 'an argument was empty. exiting' && exit 1; done
 
 # options:
-# -d [-e]: launch a daemon, -e to exit on process death (doesn't work with pid)
+# -D [-e]: launch a daemon, -e to exit on process death (doesn't work with pid)
 # -c: clean up files on daemon exit, or just clean files if no daemon. does NOT sync first.
-# -t: set sync wait time
+# -t: set check time
+# -u: set online/generic wait time between syncs
+# -d: set offline wait time between syncs. set to 0 to disable daemon when offline
 # -s <dir>: sync files somewhere else instead of /dev/shm
 # 1: unique name
 # 2: copied directory
 # [3]: command or executable file for monitored daemoning, can use pid instead with -p <pid>
 
-time=30m
+# defaults
+timeCheck=10
 tmpDir=/dev/shm/$USER/$(basename "$0")
 
+# opts
 while true; do
-	[ "$1" = "--" ] && shift && break
-	[ "$1" = "-s" ] && tmpDir=$2 && shift 2 && continue
-	[ "$1" = "-t" ] && time=$2 && shift 2 && continue
-	[ "$1" = "-d" ] && {
+	[ "$1" = "--" ] && { shift; break; }
+	[ "$1" = "-s" ] && { tmpDir=$2; shift 2; continue; }
+	[ "$1" = "-u" ] && { timeUp=$2; shift 2; continue; }
+	[ "$1" = "-d" ] && { timeDown=$2; shift 2; continue; }
+	[ "$1" = "-t" ] && { timeCheck=$2; shift 2; continue; }
+	[ "$1" = "-D" ] && {
 		daemon=true && shift &&
-			[ "$1" = "-e" ] && exitDown=true && exitDownWait=true && shift
+			[ "$1" = "-e" ] && { exitDown=true; exitDownWait=true; exitCheck=true; shift; }
 		continue
 	}
-	[ "$1" = "-c" ] && clean=true && shift && continue
+	[ "$1" = "-c" ] && { clean=true; shift; continue; }
 	break
 done;
 
+# defaults
+[ "$timeUp" ] || timeUp=30m
+[ "$timeDown" ] || timeDown=$timeUp
+
+# args
 name=$1
 linkDir=$2
 [ -h "$linkDir" ] || [ -d "$linkDir" ] || {
-	echo "'$linkDir' is not a dir" >&2
+	echo "'$linkDir' is not a dir. exiting" >&2
 	exit 1
 }
 
-tmpDir="$tmpDir/$name"
-mkdir -p "$tmpDir"
-
-if [ "$3" = "-p" ]; then
+if [ "$3" = "--" ]; then
+	bin=$4
+elif [ "$3" = "-p" ]; then
 	pid=$4
-	[ "$pid" ] || exit 1
+	[ "$pid" -gt 0 ] || {
+		echo "'$pid' not a proper PID. exiting"
+		exit 1
+	}
+	[ -d "/proc/$pid" ] || {
+		echo "pid '$pid' not running. exiting"
+		exit 1
+	}
 else
-	bin=$(basename "$(command -v "$1")")
-	[ -z "$bin" ] && unset bin
+	bin=$3
 fi
+[ "$bin" ] && {
+	bin=$(basename "$(command -v "$bin")")
+	[ -z "$bin" ] && {
+		echo 'command not found. exiting'
+		exit 1
+	}
+}
 
 staticDir="${linkDir}-static"
 
+tmpDir="$tmpDir/$name"
 memDir="$tmpDir/data"
 unpackFile="$tmpDir/unpacked"
 lockFile="$tmpDir/lock"
@@ -72,27 +97,35 @@ cleanup(){
 	fi
 }
 
-[ "$clean" ] && {
-	if [ "$daemon" ]; then
-		trap 'cleanup' EXIT
-	else
-		cleanup
-		exit
-	fi
+[ "$clean" ] && [ ! "$daemon" ] && {
+	cleanup
+	exit
 }
 
-startup(){
-	# make mem dir
-	[ -r "$memDir" ] || {
-		mkdir -m0700 "$memDir"
+exiter(){
+	[ "$daemon" ] && {
+		[ "$daemonPID" ] && killdaemon
+		rm -v "$timeFile"
 	}
-	# link mem dir to linkDir
-	[ "$(readlink "$linkDir")" = "$memDir" ] || {
-		mv -vT "$linkDir" "$staticDir"
-		ln -vsT "$memDir" "$linkDir"
-	}
+	exit
 }
-startup
+trap 'sync; exit' INT TERM
+trap exiter EXIT
+
+# startup
+mkdir -p "$tmpDir"
+
+[ -e "$lockFile" ] && rm -v "$lockFile"
+
+# make mem dir
+[ -r "$memDir" ] || {
+	mkdir -m0700 "$memDir"
+}
+# link mem dir to linkDir
+[ "$(readlink "$linkDir")" = "$memDir" ] || {
+	mv -vT "$linkDir" "$staticDir"
+	ln -vsT "$memDir" "$linkDir"
+}
 
 sync(){
 	# notify-send syncing
@@ -104,7 +137,11 @@ sync(){
 			while [ -e "$lockFile" ]; do sleep 1; done
 		}
 		touch "$lockFile"
-		rsync -aHAWXv --delete "$linkDir/" "$staticDir"
+		rsync -aHAWXv --delete "$linkDir/" "$staticDir" || {
+			echo 'sync error! exiting'
+			rm -v "$lockFile"
+			exit 1
+		}
 		rm "$lockFile"
 	else
 		echo 'from disk to ram'
@@ -118,48 +155,99 @@ sync(){
 if [ ! "$daemon" ]; then
 	sync
 else
+	timeFile=$(mktemp)
 	daemon(){
-		{
-			trap 'kill -- $!' TERM INT
-			while true; do
-				sleep "$time" &
-				wait
-				sync
-			done
-		} & syncerPID=$!
-		"$@" # waiter
-		echo process was killed
-		kill $syncerPID
-		wait
-		sync
+		if [ "$daemonPID" ]; then # daemon is running
+			# reset sleep
+			[ "$1" = "reclock" ] && kill -s USR1 -- $daemonPID
+		else # launch daemon
+			{
+				trap 'kill -- $watchPID; kill -- $loopPID; exit' TERM INT
+				trap 'kill -s USR1 -- $loopPID' USR1
+				{
+					trap 'exit' INT TERM
+					trap 'kill -- $!' USR1 EXIT # kills sleep
+					while true; do
+						sleep "$(cat "$timeFile")" &
+						wait || continue
+						sync
+					done
+				} & loopPID=$!
+				{
+					{
+						waitpid $$
+						echo 'daemon: parent was murdered, exiting'
+						kill $loopPID
+					} & pid=$!
+					{
+						waitpid $loopPID
+						echo 'daemon was killed, exiting'
+						kill $$
+					} & pid="$pid $!"
+					trap 'kill $pid' INT TERM
+					wait
+				} & watchPID=$!
+				while true; do wait && break; done
+			} & daemonPID=$!
+		fi
+	}
+	killdaemon(){
+		[ "$daemonPID" ] && {
+			kill $daemonPID
+			unset daemonPID
+		}
 	}
 
 	if [ "$bin" ]; then
+		# track by command name
+		echo "watching '$bin' command"
 		while true; do
-			if pidof "$bin" >/dev/null; then
-				echo bin is up
-				unset syncerPID
-				unset exitDownWait
-				daemon pidwait -x "$bin"
+			if pgrep -x "$bin" >/dev/null; then
+				[ "$down" ] && echo "'$bin' is up"
+				unset down
+				[ "$exitDownWait" ] && exitCheck=true
+				echo "$timeUp" > "$timeFile"
+				daemon reclock
+				pidwait -x "$bin" &
+				wait $!
+				sync
+
 			else
-				echo bin is down
-				if [ "$exitDown" ]; then
-					[ "$exitDownWait" ] || break
-					echo waiting once
-					unset exitDownWait
+				[ "$down" ] || echo "'$bin' is down"
+			down=true
+				if [ "$exitDown" ]; then # exit
+					if [ "$exitCheck" ]; then # wait
+						echo "'$bin' not running, waiting once"
+						unset exitCheck
+					else
+						echo "'$bin' not running, exiting."
+						killdaemon
+						exit
+					fi
+
+				elif [ "$timeDown" != 0 ]; then
+				echo "$timeDown" > "$timeFile"
+					daemon
+				else
+					killdaemon
 				fi
-				sleep 5
+				sleep "$timeCheck" &
+				wait $!
 			fi
 		done
 	elif [ "$pid" ]; then
-		daemon waitpid "$pid"
+		# track via waitpid
+		echo "$timeUp" > "$timeFile"
+		daemon
+		waitpid "$pid" &
+		wait $!
+		killdaemon
+		sync
 	else
-		echo "daemon will keep running until it's killed."
-		trap 'kill -- $!' TERM INT
-		while true; do
-			sleep "$time" &
-			wait
-			sync
-		done
+		# just run it
+		echo "$timeUp" > "$timeFile"
+		echo 'daemon will run until it is killed'
+		daemon
+		wait
 	fi
 fi
