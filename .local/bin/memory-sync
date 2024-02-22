@@ -1,5 +1,5 @@
 #!/bin/sh
-# todo: better daemon sleeping (no tmp files), better arguments
+# todo: better arguments
 
 # checks
 command -v rsync >/dev/null 2>&1 || { echo "needs rsync bud. exiting"; exit 1; }
@@ -10,22 +10,24 @@ for arg; do [ -z "$arg" ] && echo 'an argument was empty. exiting' && exit 1; do
 
 # options:
 # -D [-e]: launch a daemon, -e to exit on process death (doesn't work with pid)
-# -c: clean up files on daemon exit, or just clean files if no daemon. does NOT sync first.
+# -C: clean up files on daemon exit, or just clean files if no daemon. does NOT sync first.
 # -t: set check time
 # -u: set online/generic wait time between syncs
 # -d: set offline wait time between syncs. set to 0 to disable daemon when offline
-# -s <dir>: sync files somewhere else instead of /dev/shm
+# -s: <dir>: sync files somewhere else instead of /dev/shm
+# -c: return 0 if dir is unpacked
 # 1: unique name
 # 2: copied directory
 # [3]: command or executable file for monitored daemoning, can use pid instead with -p <pid>
 
 # defaults
-timeCheck=10
+timeCheck=5
 tmpDir=/dev/shm/$USER/$(basename "$0")
 
 # opts
 while true; do
 	[ "$1" = "--" ] && { shift; break; }
+	[ "$1" = "-c" ] && { check=true; shift; continue; }
 	[ "$1" = "-s" ] && { tmpDir=$2; shift 2; continue; }
 	[ "$1" = "-u" ] && { timeUp=$2; shift 2; continue; }
 	[ "$1" = "-d" ] && { timeDown=$2; shift 2; continue; }
@@ -35,7 +37,7 @@ while true; do
 			[ "$1" = "-e" ] && { exitDown=true; exitDownWait=true; exitCheck=true; shift; }
 		continue
 	}
-	[ "$1" = "-c" ] && { clean=true; shift; continue; }
+	[ "$1" = "-C" ] && { clean=true; shift; continue; }
 	break
 done;
 
@@ -81,6 +83,11 @@ memDir="$tmpDir/data"
 unpackFile="$tmpDir/unpacked"
 lockFile="$tmpDir/lock"
 
+[ "$check" ] && {
+	[ -e "$unpackFile" ] && exit 0
+	exit 1
+}
+
 cleanup(){
 	path=$(readlink "$linkDir") || {
 		echo "'$linkDir' not a symlink, not cleaning"
@@ -105,7 +112,6 @@ cleanup(){
 exiter(){
 	[ "$daemon" ] && {
 		[ "$daemonPID" ] && killdaemon
-		rm -v "$timeFile"
 	}
 	exit
 }
@@ -155,21 +161,23 @@ sync(){
 if [ ! "$daemon" ]; then
 	sync
 else
-	timeFile=$(mktemp)
 	daemon(){
 		if [ "$daemonPID" ]; then # daemon is running
 			# reset sleep
-			[ "$1" = "reclock" ] && kill -s USR1 -- $daemonPID
+			[ "$2" = "reset" ] && {
+				killdaemon
+				sync
+				daemon "$@"
+			}
 		else # launch daemon
 			{
 				trap 'kill -- $watchPID; kill -- $loopPID; exit' TERM INT
-				trap 'kill -s USR1 -- $loopPID' USR1
 				{
 					trap 'exit' INT TERM
-					trap 'kill -- $!' USR1 EXIT # kills sleep
+					trap 'kill -- $!' EXIT
 					while true; do
-						sleep "$(cat "$timeFile")" &
-						wait || continue
+						sleep "$1" &
+						wait
 						sync
 					done
 				} & loopPID=$!
@@ -204,17 +212,14 @@ else
 		while true; do
 			if pgrep -x "$bin" >/dev/null; then
 				[ "$down" ] && echo "'$bin' is up"
-				unset down
 				[ "$exitDownWait" ] && exitCheck=true
-				echo "$timeUp" > "$timeFile"
-				daemon reclock
+				daemon "$timeUp" reset
+				unset down
 				pidwait -x "$bin" &
 				wait $!
-				sync
 
 			else
 				[ "$down" ] || echo "'$bin' is down"
-			down=true
 				if [ "$exitDown" ]; then # exit
 					if [ "$exitCheck" ]; then # wait
 						echo "'$bin' not running, waiting once"
@@ -225,29 +230,30 @@ else
 						exit
 					fi
 
-				elif [ "$timeDown" != 0 ]; then
-				echo "$timeDown" > "$timeFile"
-					daemon
+				elif [ "$timeDown" = 0 ]; then
+					[ "$down" ] || {
+						killdaemon
+						sync
+					}
 				else
-					killdaemon
+					daemon "$timeDown" "$([ "$down" ] || echo reset)"
 				fi
+				down=true
 				sleep "$timeCheck" &
 				wait $!
 			fi
 		done
 	elif [ "$pid" ]; then
 		# track via waitpid
-		echo "$timeUp" > "$timeFile"
-		daemon
+		daemon "$timeUp"
 		waitpid "$pid" &
 		wait $!
 		killdaemon
 		sync
 	else
 		# just run it
-		echo "$timeUp" > "$timeFile"
 		echo 'daemon will run until it is killed'
-		daemon
+		daemon "$timeUp"
 		wait
 	fi
 fi

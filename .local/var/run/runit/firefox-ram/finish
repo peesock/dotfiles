@@ -1,0 +1,3 @@
+#!/bin/sh
+. ./conf
+memory-sync firefox "$directory"

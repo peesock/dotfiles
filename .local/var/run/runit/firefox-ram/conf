@@ -1,0 +1,3 @@
+#!/bin/sh
+directory="$HOME/.mozilla/firefox"
+binary=/usr/lib/firefox-developer-edition/firefox
