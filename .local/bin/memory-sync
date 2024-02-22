@@ -47,7 +47,7 @@ done;
 
 # args
 name=$1
-linkDir=$2
+linkDir=$(realpath -s "$2")
 [ -h "$linkDir" ] || [ -d "$linkDir" ] || {
 	echo "'$linkDir' is not a dir. exiting" >&2
 	exit 1
@@ -97,7 +97,7 @@ cleanup(){
 		echo cleaning
 		rm -v -- "$linkDir"
 		mv -Tfv -- "$staticDir" "$linkDir"
-		echo "removing '$tmpDir"
+		echo "removing '$tmpDir'"
 		rm -rf -- "$tmpDir"
 	else
 		echo "'$linkDir' not symlinked to '$tmpDir/data', not cleaning"
@@ -113,6 +113,7 @@ exiter(){
 	[ "$daemon" ] && {
 		[ "$daemonPID" ] && killdaemon
 	}
+	[ -e "$lockFile" ] && rm -v "$lockFile"
 	exit
 }
 trap 'sync; exit' INT TERM
@@ -120,8 +121,6 @@ trap exiter EXIT
 
 # startup
 mkdir -p "$tmpDir"
-
-[ -e "$lockFile" ] && rm -v "$lockFile"
 
 # make mem dir
 [ -r "$memDir" ] || {
@@ -135,6 +134,7 @@ mkdir -p "$tmpDir"
 
 sync(){
 	# notify-send syncing
+	date
 	printf 'syncing '
 	if [ -e "$unpackFile" ]; then
 		echo 'from ram to disk'

@@ -10,7 +10,7 @@ checksync(){
 	[ "$1" ] && {
 		sleep "$1" & # must be >1
 	}
-	svu check firefox-ram | LC_ALL=C grep '^ok: run: .\+) 1s' || {
+	lastChar=$(svu check firefox-ram | LC_ALL=C grep -o '^ok: run: .\+) [0-9]' | tail -c2) && [ "$lastChar" -gt 0 ] || {
 		[ -d /proc/$! ] || return 1
 		sleep 0.1
 		checksync
