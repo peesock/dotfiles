@@ -83,6 +83,10 @@ g.loaded_matchparen = 1
 g.netrw = 1
 g.lf_netrw = 1
 
+-- Example for configuring Neovim to load user-installed installed Lua rocks:
+package.path = package.path .. ";" .. vim.fn.expand("$HOME") .. "/.luarocks/share/lua/5.1/?/init.lua;"
+package.path = package.path .. ";" .. vim.fn.expand("$HOME") .. "/.luarocks/share/lua/5.1/?.lua;"
+
 require('bootstrap')
 
 -- binds
