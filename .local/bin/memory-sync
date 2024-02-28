@@ -1,5 +1,5 @@
 #!/bin/sh
-# todo: better arguments
+# todo: better arguments, better command searching
 
 # checks
 command -v rsync >/dev/null 2>&1 || { echo "needs rsync bud. exiting"; exit 1; }
@@ -15,7 +15,9 @@ for arg; do [ -z "$arg" ] && echo 'an argument was empty. exiting' && exit 1; do
 # -u: set online/generic wait time between syncs
 # -d: set offline wait time between syncs. set to 0 to disable daemon when offline
 # -s: <dir>: sync files somewhere else instead of /dev/shm
-# -c: return 0 if dir is unpacked
+# -c: check if dir is unpacked before syncing without daemon
+# -f: match for full command line for command search
+# -a: automatically sync once before launching daemon
 # 1: unique name
 # 2: copied directory
 # [3]: command or executable file for monitored daemoning, can use pid instead with -p <pid>
@@ -38,6 +40,8 @@ while true; do
 		continue
 	}
 	[ "$1" = "-C" ] && { clean=true; shift; continue; }
+	[ "$1" = "-f" ] && { full=true shift; continue; }
+	[ "$1" = "-a" ] && { auto=true; shift; continue; }
 	break
 done;
 
@@ -54,7 +58,7 @@ linkDir=$(realpath -s "$2")
 }
 
 if [ "$3" = "--" ]; then
-	bin=$4
+	command=$4
 elif [ "$3" = "-p" ]; then
 	pid=$4
 	[ "$pid" -gt 0 ] || {
@@ -66,27 +70,25 @@ elif [ "$3" = "-p" ]; then
 		exit 1
 	}
 else
-	bin=$3
+	command=$3
 fi
-[ "$bin" ] && {
-	bin=$(basename "$(command -v "$bin")")
-	[ -z "$bin" ] && {
-		echo 'command not found. exiting'
-		exit 1
+[ "$command" ] && {
+	command -v "$command" || {
+		echo "note: '$command' not found in PATH"
 	}
 }
+if [ "$full" ]; then
+	alias pgrep='pgrep -f';
+elif [ "$command" != "$(echo "$command" | head -c 15)" ]; then
+	echo "'$command' longer than 15 chars, use '-f' flag. exiting"
+	exit 1
+fi
 
 staticDir="${linkDir}-static"
-
 tmpDir="$tmpDir/$name"
 memDir="$tmpDir/data"
 unpackFile="$tmpDir/unpacked"
 lockFile="$tmpDir/lock"
-
-[ "$check" ] && {
-	[ -e "$unpackFile" ] && exit 0
-	exit 1
-}
 
 cleanup(){
 	path=$(readlink "$linkDir") || {
@@ -110,6 +112,7 @@ cleanup(){
 }
 
 exiter(){
+	echo 'exiting properly'
 	[ "$daemon" ] && {
 		[ "$daemonPID" ] && killdaemon
 	}
@@ -118,26 +121,43 @@ exiter(){
 }
 trap 'sync; exit' INT TERM
 trap exiter EXIT
-
-# startup
-mkdir -p "$tmpDir"
-
-# make mem dir
-[ -r "$memDir" ] || {
-	mkdir -m0700 "$memDir"
-}
-# link mem dir to linkDir
-[ "$(readlink "$linkDir")" = "$memDir" ] || {
-	mv -vT "$linkDir" "$staticDir"
-	ln -vsT "$memDir" "$linkDir"
-}
+# on normal exit, whether it syncs is up to the program. on kill, it always syncs.
 
 sync(){
-	# notify-send syncing
+	[ "$1" = "auto" ] && {
+		if [ -e "$unpackFile" ]; then
+			sync
+		else
+			sync disk
+		fi
+		return
+	}
 	date
 	printf 'syncing '
-	if [ -e "$unpackFile" ]; then
+	if [ "$1" = "disk" ]; then
+		echo 'from disk to ram'
+		mkdir -vp "$tmpDir"
+
+		# make memDir
+		[ -r "$memDir" ] || {
+			mkdir -m0700 "$memDir"
+		}
+		# link memDir to linkDir
+		[ "$(readlink "$linkDir")" = "$memDir" ] || {
+			mv -vT "$linkDir" "$staticDir"
+			ln -vsT "$memDir" "$linkDir"
+		}
+
+		rsync -aHAWXv "$staticDir/" "$linkDir" &&
+			touch "$unpackFile" || {
+			echo "epic fail" && exit 1
+		}
+	else
 		echo 'from ram to disk'
+		[ -e "$unpackFile" ] || {
+			echo "cannot sync, nothing in '$tmpDir'. exiting"
+			exit 1
+		}
 		[ -e "$lockFile" ] && {
 			echo 'lock in place, waiting for removal...'
 			while [ -e "$lockFile" ]; do sleep 1; done
@@ -145,22 +165,22 @@ sync(){
 		touch "$lockFile"
 		rsync -aHAWXv --delete "$linkDir/" "$staticDir" || {
 			echo 'sync error! exiting'
-			rm -v "$lockFile"
-			exit 1
-		}
-		rm "$lockFile"
-	else
-		echo 'from disk to ram'
-		rsync -aHAWXv "$staticDir/" "$linkDir" &&
-			touch "$unpackFile" || {
-				echo "epic fail" && exit 1
-			}
+					rm -v "$lockFile"
+					exit 1
+				}
+				rm "$lockFile"
 	fi
+	echo
 }
 
 if [ ! "$daemon" ]; then
-	sync
+	if [ "$check" ]; then
+		sync
+	else
+		sync auto
+	fi
 else
+	[ "$auto" ] && sync auto
 	daemon(){
 		if [ "$daemonPID" ]; then # daemon is running
 			# reset sleep
@@ -178,7 +198,7 @@ else
 					while true; do
 						sleep "$1" &
 						wait
-						sync
+						sync || exit 1
 					done
 				} & loopPID=$!
 				{
@@ -206,27 +226,29 @@ else
 		}
 	}
 
-	if [ "$bin" ]; then
+	if [ "$command" ]; then
 		# track by command name
-		echo "watching '$bin' command"
+		echo "watching '$command' command"
 		while true; do
-			if pgrep -x "$bin" >/dev/null; then
-				[ "$down" ] && echo "'$bin' is up"
+			if pgrep -x "$command" >/dev/null; then
+				[ "$down" ] && echo "'$command' is up"
+				wasUp=true
 				[ "$exitDownWait" ] && exitCheck=true
 				daemon "$timeUp" reset
 				unset down
-				pidwait -x "$bin" &
+				pidwait -x "$command" &
 				wait $!
 
 			else
-				[ "$down" ] || echo "'$bin' is down"
+				[ "$down" ] || echo "'$command' is down"
 				if [ "$exitDown" ]; then # exit
 					if [ "$exitCheck" ]; then # wait
-						echo "'$bin' not running, waiting once"
+						echo "'$command' not running, waiting once"
 						unset exitCheck
 					else
-						echo "'$bin' not running, exiting."
+						echo "'$command' not running, exiting."
 						killdaemon
+						[ "$wasUp" ] && sync
 						exit
 					fi
 
