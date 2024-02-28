@@ -1,13 +1,11 @@
 #!/bin/sh
 # vim: ft=sh
-
-# custom environment variables
 export TERMINAL=kitty
 export BROWSER=firefox.sh
-export SCREENSHOTS=$HOME/pics/screenshots
+export SCREENSHOTS="$HOME/pics/screenshots"
 export EDITOR=nvim
 export XDG_CONFIG_HOME="$HOME/.config"
-export PATH=$HOME/.local/bin:$PATH
+export PATH="$HOME/.local/bin:$PATH"
 # export MANPAGER="sh -c 'col -bx | bat -l man -p'"
 export MANPAGER="less"
 export PAGER="less"

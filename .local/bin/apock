@@ -1,77 +1,79 @@
 #!/bin/sh
 
-checkxss()(
-	pgrep -ax "^$(ps -o comm= $$)" | grep -v " xss\| warn$" | awk '{print $1}'
-)
+programName=$(basename "$0")
+tmpDir="/tmp/$USER/$programName/$DISPLAY"
+lockFile=$tmpDir/lock
+
+mkdir -p "$tmpDir"
 
 # warn feature used with xss-lock
 if [ "$1" = "warn" ]; then
 	trap 'exit' TERM INT
-	[ "$(checkxss)" ] || {
-		[ -e "$pidDir/lock" ] || {
-			i=$(xset q | awk '/cycle/{print $4}')
-			while [ $i -gt 0 ]; do
-				t=2000
-				[ $i -eq 1 ] && t=500 # prevents dunst from displaying this when waking up
-				notify-send -r 13 -t $t "Locking" "$i\s"
-				sleep 1
-				i=$((i - 1))
-			done
-		}
+	[ -e "$lockFile" ] || {
+		i=$(xset q | awk '/cycle/{print $4}')
+		while [ $i -gt 0 ]; do
+			t=2000
+			[ $i -eq 1 ] && t=500 # prevents dunst from displaying this when waking up
+			notify-send -r 13 -t $t "Locking" "$i\s"
+			sleep 1
+			i=$((i - 1))
+		done
 	}
 	sleep 2147483647 &
 	trap "kill $!" EXIT
 	wait
 	exit
-	elif [ "$1" = "xss" ]; then
-		xss=true
-		shift
 fi
 
-programName=$(basename "$0")
+[ "$1" = "xss" ] && {
+	xss=true; shift
+}
 
-# for storing inaccesible variables
-pidDir="/tmp/$USER/$programName/$DISPLAY"
-mkdir -p "$pidDir"
+[ -e "$lockFile" ] && [ "$xss" ] && {
+	echo "already locked. hanging until exit"
+	command -v inotifywait >/dev/null && {
+		inotifywait -e delete_self "$lockFile" && exit
+	}
+	echo 'inotifywait failed'
+	while [ -e "$lockFile" ]; do
+		sleep 5
+	done
+	exit
+}
 
 # basic lock command
 lock(){
 	alock -a passwd "$@"
 }
 
-[ "$xss" ] && {
-	waitingList=$(checkxss)
-	[ "$waitingList" ] && {
-		waitpid -e $waitingList
-		exit
-	}
-	unset waitingList
-}
-
-date
-
 pre(){
+	date
 	# lock-essential functions
-	find "$pidDir" -type f -print0 | xargs -0 rm 2>/dev/null
+	find "$tmpDir" -type f -print0 | xargs -0 rm 2>/dev/null
 
 	# user-defined functions
 	# kill secret services
 	passwords -k -K -q 2>/dev/null &
 	dunstctl set-paused true
+	touch "$lockFile"
 }
+
 post(){
 	# lock-essential functions
-	kill $(cat "$pidDir"/* 2>/dev/null) 2>/dev/null
+	kill $(cat "$tmpDir"/* 2>/dev/null) 2>/dev/null
 
 	# user-defined functions
 	dunstctl set-paused false
+	rm "$lockFile"
 }
+trap exit TERM INT
+trap post EXIT
 
 # simple fallback always runs in case the lock cover fails
 fallback(){
 	sleep 3
 	# external variables used here have to be imported from $pidDIR
-	for f in "$pidDir"/*PID ; do
+	for f in "$tmpDir"/*PID ; do
 		eval "$(basename "$f")='$(cat "$f")'"
 	done
 	waitpid $coverPID; [ -d "/proc/$lockPID" ] && (
@@ -99,7 +101,7 @@ getwid()(
 # set up visualizer
 visualizer()(
 	lock -b none & lockPID=$!
-	echo $lockPID > "$pidDir/lockPID"
+	echo $lockPID > "$tmpDir/lockPID"
 
 	# pause all non-server programs accessing the fifo
 	fifoFile="/tmp/mpd.fifo"
@@ -137,7 +139,7 @@ visualizer()(
 		xterm -bg '#000000' -fullscreen -e env TERM=xterm-256color vis & coverPID=$!
 	fi
 	setfull "$(getwid $coverPID)"
-	echo $coverPID > "$pidDir/coverPID"
+	echo $coverPID > "$tmpDir/coverPID"
 
 	wait "$lockPID"
 	kill -s CONT $pidList 2>/dev/null
@@ -178,7 +180,7 @@ xscreensaver(){
 
 	lock & lockPID=$!
 	lockWID=$(windowwatcher --name "")
-	echo $lockPID | tee "$pidDir/coverPID" "$pidDir/lockPID" >/dev/null
+	echo $lockPID | tee "$tmpDir/coverPID" "$tmpDir/lockPID" >/dev/null
 	export XSCREENSAVER_WINDOW="$lockWID"
 
 	while true; do
@@ -189,15 +191,15 @@ xscreensaver(){
 		done
 		echo displaying "'$exe'" >&2
 		$exe --root & exePID=$!
-		echo $! > "$pidDir/$!"
+		echo $! > "$tmpDir/$!"
 		unset exe
 		[ "$cycle" ] && {
-			(sleep "$t" && kill -9 $exePID) & echo $! > "$pidDir/$!"
+			(sleep "$t" && kill -9 $exePID) & echo $! > "$tmpDir/$!"
 		}
 		waitpid "$exePID"
 		[ -d "/proc/$lockPID" ] || break
 	done &
-	echo $! > "$pidDir/$!"
+	echo $! > "$tmpDir/$!"
 
 	wait "$lockPID"
 }
@@ -208,10 +210,8 @@ exe=$1
 if [ "$exe" ]; then
 	shift
 	fallback & fallbackPID=$!
-	$exe "$@" & echo $! > "$pidDir/funcPID"
+	$exe "$@" & echo $! > "$tmpDir/funcPID"
 	wait $!
 else
 	lock
 fi
-post
-true
