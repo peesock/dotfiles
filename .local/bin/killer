@@ -1,0 +1,38 @@
+#!/bin/sh
+user=${1-$USER}
+if [ "$2" = "noparent" ]; then
+	ppid=$(sed -n 's/^PPid:\s\+//p' < "/proc/$$/status")
+else
+	ppid=0
+fi
+
+echo "killing all processes owned by '$user'"
+pidlister(){ pgrep -u "$user" | sed "/^$$\$\|^$ppid\$/d"; }
+# kill as much as possible to reduce process count
+kill -s TERM $(pidlister) 2>/dev/null
+sleep 1
+pgrep -au "$user"
+# of remaining and newly-spawned processes, give them one last chance
+max=$(cat /proc/sys/kernel/pid_max)
+i=1
+while [ $(find /proc -maxdepth 1 -type d | cut -d/ -f3 | LC_ALL=C grep '[0-9]' | wc -l) -ge $(((max / 2) - 100)) ] && [ $i -le 3 ]; do
+	echo "[$i]: lots of processes, trying to kill..."
+	pkill -u "$user" -TERM
+	sleep 2
+	i=$((i + 1))
+done
+if env kill --version | grep -qF 'pidfd'; then
+	[ $i -lt 3 ] && {
+		for pid in $(pidlister); do
+			env kill --timeout 15000 KILL -s TERM $pid 2>/dev/null &
+		done
+		echo waiting
+		wait
+	}
+else
+	echo 'GNU `kill` coreutil not installed. simply sleeping...'
+	sleep 7
+fi
+
+# if something is somehow still up
+kill -s KILL $(pidlister) 2>/dev/null
