@@ -1,3 +1,2 @@
 #!/bin/sh
-. ./conf
-exec memory-sync -D -u 30m -d 0 -t 5 firefox "$directory" "$binary" >/dev/null 2>&1
+exec memory-sync -n -D -u 30m -d 0 -t 5 firefox "$HOME/.mozilla/firefox" firefox >/dev/null 2>&1

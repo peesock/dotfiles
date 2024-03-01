@@ -14,7 +14,7 @@ checksync(){
 	return 0
 }
 
-memory-sync firefox "$dir" 2>/dev/null & pid=$!
+memory-sync firefox "$dir" disk 2>/dev/null & pid=$!
 svu check firefox-ram >/dev/null && {
 	if svu check firefox-ram | LC_ALL=C grep '^ok: run: ' >/dev/null; then
 		exec firefox-developer-edition
