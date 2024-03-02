@@ -1,38 +1,65 @@
 #!/bin/sh
-user=${1-$USER}
-if [ "$2" = "noparent" ]; then
-	ppid=$(sed -n 's/^PPid:\s\+//p' < "/proc/$$/status")
+# kill everything a user owns, as gracefully and as correctly as possible
+# todo: signal handling, login shell handling, kill by more than just $USER
+
+if [ "$1" = "nofork" ]; then shift
 else
-	ppid=0
+	exec setsid -f "$0" nofork "$@"
 fi
 
-echo "killing all processes owned by '$user'"
-pidlister(){ pgrep -u "$user" | sed "/^$$\$\|^$ppid\$/d"; }
-# kill as much as possible to reduce process count
-kill -s TERM $(pidlister) 2>/dev/null
-sleep 1
-pgrep -au "$user"
-# of remaining and newly-spawned processes, give them one last chance
-max=$(cat /proc/sys/kernel/pid_max)
-i=1
-while [ $(find /proc -maxdepth 1 -type d | cut -d/ -f3 | LC_ALL=C grep '[0-9]' | wc -l) -ge $(((max / 2) - 100)) ] && [ $i -le 3 ]; do
-	echo "[$i]: lots of processes, trying to kill..."
-	pkill -u "$user" -TERM
-	sleep 2
-	i=$((i + 1))
+user=$USER
+timeout=15000
+while true; do
+	[ "$1" = "-p" ] && { killppid=true; shift; continue; }
+	[ "$1" = "-t" ] && { timeout=$(($2 * 1000)); shift 2; continue; }
+	[ "$1" = "-u" ] && { user=$2; shift 2; continue; }
+	break
 done
-if env kill --version | grep -qF 'pidfd'; then
-	[ $i -lt 3 ] && {
-		for pid in $(pidlister); do
-			env kill --timeout 15000 KILL -s TERM $pid 2>/dev/null &
-		done
-		echo waiting
-		wait
-	}
-else
-	echo 'GNU `kill` coreutil not installed. simply sleeping...'
-	sleep 7
-fi
 
-# if something is somehow still up
-kill -s KILL $(pidlister) 2>/dev/null
+sedscript=$(mktemp)
+trap 'rm "$sedscript"; exit' INT TERM
+
+addpid(){
+	printf '/^%s$/d\n' "$@" >> "$sedscript"
+}
+addpid "$@" $([ "$killppid" ] || sed -n 's/^PPid:\s\+//p' < "/proc/$$/status")
+
+pidxarger(){
+	addpid $(cut -d' ' -f4 </proc/self/stat)
+	tmp=$(pgrep -u "$user")
+	echo "$tmp" | sed -f "$sedscript" | head -c -1 | xargs -d'\n' "$@"
+}
+
+# kill as much as possible to reduce process count
+echo 'killing everything...'
+pidxarger kill -s TERM 2>/dev/null
+sleep 1
+list=$(pidxarger ps -p 2>/dev/null) && {
+	echo 'remaining processes:'
+	echo "$list"
+	echo
+	
+	# of remaining/newly-spawned processes, give them one last chance
+	if env kill --version | grep -qF 'pidfd'; then
+		echo 'killing leftovers after timeout...'
+		time=$(date +%s.%N)
+		pidxarger -P0 -L1 kill --timeout "$timeout" KILL -s TERM &
+		wait
+		echo "took $(echo "$(date +%s.%N) - $time" | bc) seconds"
+	else
+		echo 'GNU kill not installed (with pidfd support). sleeping...'
+		sleep 7 &
+		wait
+	fi
+	
+	list=$(pidxarger ps -p 2>/dev/null) && {
+		echo 'remaining processes:'
+		echo "$list"
+		echo
+		# if something is somehow still up
+		echo 'killing anything left...'
+		# pidxarger kill -s KILL 2>/dev/null
+	}
+}
+rm "$sedscript"
+echo 'done'

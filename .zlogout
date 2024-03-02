@@ -19,12 +19,7 @@ getParents(){
 }
 
 i=$(w -h "$USER" | wc -l)
-echo i=$i >> ~/superlog
-getParents >> ~/superlog
-ps $(getParents) >> ~/superlog
 if [ $i -le 1 ] && checkParents $$ $(getParents); then
-	echo "i am KILLING things at $(date)" >> ~/superlog
-	killer "$USER" noparent
+	killer nofork
 fi
-echo "i am ENDING my zlogout at $(date)" >> ~/superlog
 # vim: ft=sh

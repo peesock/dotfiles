@@ -8,8 +8,7 @@
 				# echo $serv
 				runsv "$serv" &
 			done
-			while true; do echo "$(date)"; sleep 10m; done &
 		fi
-	} & #>/dev/null 2>&1 &
+	} &
 )
 # vim: ft=sh
