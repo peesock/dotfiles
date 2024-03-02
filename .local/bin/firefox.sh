@@ -15,16 +15,11 @@ checksync(){
 }
 
 memory-sync firefox "$dir" disk 2>/dev/null & pid=$!
-svu check firefox-ram >/dev/null && {
-	if svu check firefox-ram | LC_ALL=C grep '^ok: run: ' >/dev/null; then
-		exec firefox-developer-edition
-	else
-	svu u firefox-ram
-	checksync 5 && {
-		wait $pid
-		exec firefox-developer-edition
-	}
-	fi
+svu u firefox-ram
+checksync 5 && {
+	wait $pid
+	echo running
+	exec firefox-developer-edition
 }
 echo 'service not working, using local daemon'
 trap 'kill $!' INT TERM

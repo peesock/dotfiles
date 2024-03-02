@@ -131,12 +131,15 @@ exiter(){
 	status=$?
 	[ "$daemon" ] && {
 		killdaemon
+		[ "$killed" ] && {
+			[ -e "$unpackFile" ] && sync
+		}
 	}
 	[ -e "$lockFile" ] && rm -v "$lockFile"
 	echo "reached exit"
 	exit $status
 }
-trap 'echo killed; exit' INT TERM
+trap 'killed=true; echo killed; exit' INT TERM
 trap exiter EXIT
 
 sync(){
@@ -190,7 +193,7 @@ sync(){
 			rm -v "$lockFile"
 			exit 3
 		}
-				rm "$lockFile"
+		rm "$lockFile"
 	fi
 	echo >&2
 }
