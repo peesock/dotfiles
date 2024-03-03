@@ -11,7 +11,7 @@ for arg; do [ -z "$arg" ] && echo 'an argument was empty. exiting' && exit 1; do
 # options:
 # -c: return whether dir is unpacked
 # -C: clean up files on daemon exit, or just clean files on one-shot. does NOT sync first
-# -d: set offline wait time between syncs for command daemon, set to 0 to disable daemon when offline
+# -d: set offline wait time between syncs for command daemon. disabled by default
 # -D [-e]: launch a daemon, -e to exit on process death (doesn't work with pid)
 # -f: match for full command line for command daemon
 # -n: notify-send on failures
@@ -26,6 +26,8 @@ for arg; do [ -z "$arg" ] && echo 'an argument was empty. exiting' && exit 1; do
 # defaults
 programName=$(basename "$0")
 timeCheck=5
+timeUp=30m
+timeDown=0
 tmpDir=/dev/shm/$USER/$programName
 
 # opts
@@ -46,10 +48,6 @@ while true; do
 	[ "$1" = "-n" ] && { notify=true shift; continue; }
 	break
 done;
-
-# defaults
-[ "$timeUp" ] || timeUp=30m
-[ "$timeDown" ] || timeDown=$timeUp
 
 # args
 name=$1

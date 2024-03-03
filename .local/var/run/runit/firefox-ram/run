@@ -1,2 +1,2 @@
 #!/bin/sh
-exec memory-sync -n -D -u 30m -d 0 -t 5 firefox "$HOME/.mozilla/firefox" firefox
+exec memory-sync -n -D -u 30m -t 5 firefox "$HOME/.mozilla/firefox" firefox
