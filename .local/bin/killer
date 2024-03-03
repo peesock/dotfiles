@@ -9,10 +9,12 @@
 #
 # options:
 # -c: send CONT signal after TERM
+# -d: dry run, echos kill commands instead of running them
 # -l: kill user login shells using HUP
 # -p: also kill parent process, only applicable with nofork
 # -t <t>: timeout time. default is 15s
-# -u <user>: set user processes to kill. generally only useful as root
+# -u <users>: set users to kill, comma delimited
+# -v: invert users to match
 #
 # examples:
 # `killer` without root will fork, and kill all processes owned by $USER, except login shells.
@@ -25,14 +27,20 @@ else
 	exec setsid -f "$0" nofork "$@"
 fi
 
+# hide kernel processes, needs procps version >= 4
+export LIBPROC_HIDE_KERNEL=
+
+kill="kill"
 timeout=15000
-[ "$(whoami)" = root ] && root=true || user=$USER
+[ "$(whoami)" = root ] || users=$USER
 while true; do
 	[ "$1" = "-c" ] && { continue=true; shift; continue; }
+	[ "$1" = "-d" ] && { kill="echo kill"; shift; continue; }
 	[ "$1" = "-l" ] && { killlogin=true; shift; continue; }
 	[ "$1" = "-p" ] && { killppid=true; shift; continue; }
 	[ "$1" = "-t" ] && { timeout=$(($2 * 1000)); shift 2; continue; }
-	[ "$1" = "-u" ] && { user=$2; shift 2; continue; }
+	[ "$1" = "-u" ] && { users=$2; shift 2; continue; }
+	[ "$1" = "-v" ] && { invert=true; shift; continue; }
 	break
 done
 
@@ -44,18 +52,26 @@ addpid(){
 }
 
 [ "$killppid" ] || ppid=$(cut -d' ' -f4 < "/proc/$$/stat")
-if [ "$user" ]; then
-	loginpids=$(pgrep -P "$(who -u | awk '{if ($1 == "'"$user"'") print $6}' | tr '\n' , | head -c -1)")
+
+if [ "$users" ]; then
+	loginpids=$( (echo "$users"; who -u) | awk '
+		BEGIN { FS=","; ORS="," }
+		{
+			if (NR == 1 && FS=",") for (i=1;i<=NF;i++) A[$i]++;
+			else { FS=" "; $0=$0; for (n in A) { if (n == $1) var="true"; } if (var '"$([ "$invert" ] && echo '!=' || echo '==')"' "true") print $6; var=""; }
+		}' | head -c -1
+	)
+	loginpids=$(pgrep -P "$loginpids")
 else
 	loginpids=$(pgrep -P "$(who -u | awk '{print $6}' | tr '\n' , | head -c -1)")
 	fi
 
 addpid 1 "$@" $ppid $loginpids
 
-if [ "$user" ]; then
-	alias getpids='pgrep -u "$user"'
+if [ "$users" ]; then
+	alias getpids='pgrep '"$([ "$invert" ] && echo '-v ')"'-u "$users"'
 else
-	alias getpids='pgrep -v -P2' # all non-kernel pids
+	alias getpids='pgrep -v -P2'
 fi
 
 pidxarger(){
@@ -67,8 +83,8 @@ pidxarger(){
 # kill as much as possible to reduce process count
 pidxarger ps -o pid= -p >/dev/null 2>&1 && {
 	echo 'killing everything...'
-	pidxarger kill -s TERM 2>/dev/null
-	[ "$continue" ] && pidxarger kill -s CONT 2>/dev/null
+	pidxarger $kill -s TERM 2>/dev/null
+	[ "$continue" ] && pidxarger $kill -s CONT 2>/dev/null
 	sleep 1
 	list=$(pidxarger ps -p 2>/dev/null) && {
 		echo 'remaining processes:'
@@ -78,8 +94,8 @@ pidxarger ps -o pid= -p >/dev/null 2>&1 && {
 		# of remaining/newly-spawned processes, give them one last chance
 		if env kill --version | grep -qF 'pidfd'; then
 			echo 'killing leftovers after timeout...'
-			echo "timeout time: $(($timeout / 1000))s"
-			pidxarger -P0 -L1 kill --timeout "$timeout" KILL -s TERM 2>/dev/null &
+			echo "timeout time: $((timeout / 1000))s"
+			pidxarger -P0 -L1 $kill --timeout "$timeout" KILL -s TERM 2>/dev/null &
 			time=$(date +%s.%N)
 			wait
 			echo "took $(echo "$(date +%s.%N) - $time" | bc)s"
@@ -95,14 +111,14 @@ pidxarger ps -o pid= -p >/dev/null 2>&1 && {
 			echo "$list"
 			echo
 			echo 'killing anything left...'
-			pidxarger kill -s KILL 2>/dev/null
+			pidxarger $kill -s KILL 2>/dev/null
 		}
 	}
 	[ "$killlogin" ] || echo 'done'
 }
 [ "$killlogin" ] && {
 	echo "killing logout shells..."
-	kill -s TERM $loginpids
-	kill -s HUP $loginpids
+	$kill -s TERM $loginpids
+	$kill -s HUP $loginpids
 }
 rm "$sedscript"
