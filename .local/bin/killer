@@ -1,6 +1,24 @@
 #!/bin/sh
-# kill everything a user owns, as gracefully and as correctly as possible
 # todo: signal handling
+
+# kill everything, as gracefully and as correctly as possible
+# usage:
+# killer ["nofork"] [OPTION]... [PID]...
+# "nofork" prevents forking
+# PID will not be killed
+#
+# options:
+# -c: send CONT signal after TERM
+# -l: kill user login shells using HUP
+# -p: also kill parent process, only applicable with nofork
+# -t <t>: timeout time. default is 15s
+# -u <user>: set user processes to kill. generally only useful as root
+#
+# examples:
+# `killer` without root will fork, and kill all processes owned by $USER, except login shells.
+# 'killer -l` will kill login shells after killing everything else.
+# `killer` as root kills every process owned by every user (including root) except their login shells.
+# `killer nofork` will prevent forking. this can cause the script to kill a distant parent that it needs to survive, like Xorg hosting the terminal that runs `killer`.
 
 if [ "$1" = "nofork" ]; then shift
 else
@@ -8,8 +26,9 @@ else
 fi
 
 timeout=15000
-[ "$(whoami)" != root ] && user=$USER
+[ "$(whoami)" = root ] && root=true || user=$USER
 while true; do
+	[ "$1" = "-c" ] && { continue=true; shift; continue; }
 	[ "$1" = "-l" ] && { killlogin=true; shift; continue; }
 	[ "$1" = "-p" ] && { killppid=true; shift; continue; }
 	[ "$1" = "-t" ] && { timeout=$(($2 * 1000)); shift 2; continue; }
@@ -23,14 +42,20 @@ trap 'rm "$sedscript"; exit' INT TERM
 addpid(){
 	printf '/^%s$/d\n' "$@" >> "$sedscript"
 }
-ppid=$([ "$killppid" ] || cut -d' ' -f4 < "/proc/$$/stat")
-loginpids=$(pgrep -P "$(who -u | awk '{if ($1 == "'$USER'") print $6}' | tr '\n' , | head -c -1)")
-addpid "$@" $ppid $loginpids
+
+[ "$killppid" ] || ppid=$(cut -d' ' -f4 < "/proc/$$/stat")
+if [ "$user" ]; then
+	loginpids=$(pgrep -P "$(who -u | awk '{if ($1 == "'"$user"'") print $6}' | tr '\n' , | head -c -1)")
+else
+	loginpids=$(pgrep -P "$(who -u | awk '{print $6}' | tr '\n' , | head -c -1)")
+	fi
+
+addpid 1 "$@" $ppid $loginpids
 
 if [ "$user" ]; then
 	alias getpids='pgrep -u "$user"'
 else
-	alias getpids='pgrep -v -s1'
+	alias getpids='pgrep -v -P2' # all non-kernel pids
 fi
 
 pidxarger(){
@@ -43,7 +68,7 @@ pidxarger(){
 pidxarger ps -o pid= -p >/dev/null 2>&1 && {
 	echo 'killing everything...'
 	pidxarger kill -s TERM 2>/dev/null
-	pidxarger kill -s CONT 2>/dev/null # maybe this is bad idk
+	[ "$continue" ] && pidxarger kill -s CONT 2>/dev/null
 	sleep 1
 	list=$(pidxarger ps -p 2>/dev/null) && {
 		echo 'remaining processes:'
@@ -73,9 +98,10 @@ pidxarger ps -o pid= -p >/dev/null 2>&1 && {
 			pidxarger kill -s KILL 2>/dev/null
 		}
 	}
-	echo 'done'
+	[ "$killlogin" ] || echo 'done'
 }
 [ "$killlogin" ] && {
+	echo "killing logout shells..."
 	kill -s TERM $loginpids
 	kill -s HUP $loginpids
 }
