@@ -23,10 +23,9 @@ trap 'rm "$sedscript"; exit' INT TERM
 addpid(){
 	printf '/^%s$/d\n' "$@" >> "$sedscript"
 }
-addpid "$@" \
-	$([ "$killppid" ] || cut -d' ' -f4 < "/proc/$$/stat") \
-	$([ "$killlogin" ] || pgrep -P "$(who -u | awk '{if ($1 == "'$USER'") print $6}' | tr '\n' , | head -c -1)")
-# ignore login shell
+ppid=$([ "$killppid" ] || cut -d' ' -f4 < "/proc/$$/stat")
+loginpids=$(pgrep -P "$(who -u | awk '{if ($1 == "'$USER'") print $6}' | tr '\n' , | head -c -1)")
+addpid "$@" $ppid $loginpids
 
 if [ "$user" ]; then
 	alias getpids='pgrep -u "$user"'
@@ -44,6 +43,7 @@ pidxarger(){
 pidxarger ps -o pid= -p >/dev/null 2>&1 && {
 	echo 'killing everything...'
 	pidxarger kill -s TERM 2>/dev/null
+	pidxarger kill -s CONT 2>/dev/null # maybe this is bad idk
 	sleep 1
 	list=$(pidxarger ps -p 2>/dev/null) && {
 		echo 'remaining processes:'
@@ -74,5 +74,9 @@ pidxarger ps -o pid= -p >/dev/null 2>&1 && {
 		}
 	}
 	echo 'done'
+}
+[ "$killlogin" ] && {
+	kill -s TERM $loginpids
+	kill -s HUP $loginpids
 }
 rm "$sedscript"
