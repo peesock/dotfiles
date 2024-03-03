@@ -24,24 +24,19 @@ addpid(){
 	printf '/^%s$/d\n' "$@" >> "$sedscript"
 }
 addpid "$@" \
-	$([ "$killppid" ] || sed -n 's/^PPid:\s\+//p' < "/proc/$$/status") \
-	$([ "$killlogin" ] || pgrep -P $(who -u | awk '{if ($1 == "'$USER'") print $6}'))
+	$([ "$killppid" ] || cut -d' ' -f4 < "/proc/$$/stat") \
+	$([ "$killlogin" ] || pgrep -P "$(who -u | awk '{if ($1 == "'$USER'") print $6}' | tr '\n' , | head -c -1)")
 # ignore login shell
 
 if [ "$user" ]; then
-	getpids(){
-		pgrep -u "$user"
-	}
+	alias getpids='pgrep -u "$user"'
 else
-	getpids(){
-		pgrep -v -s1
-	}
+	alias getpids='pgrep -v -s1'
 fi
 
 pidxarger(){
-	addpid $(cut -d' ' -f4 </proc/self/stat)
+	addpid $(cut -d' ' -f4 </proc/self/stat) # like $$ but not main process
 	tmp=$(getpids)
-	# echo "$tmp" | less
 	echo "$tmp" | sed -f "$sedscript" | head -c -1 | xargs -d'\n' "$@"
 }
 

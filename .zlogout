@@ -6,7 +6,7 @@ checkParents(){
 	pid=$1
 	shift
 	while true; do
-		pid=$(sed -n 's/^PPid:\s\+//p' < "/proc/$pid/status")
+		pid=$(cut -d' ' -f4 < "/proc/$pid/stat")
 		[ "$pid" -le 1 ] && return 1
 		for parent; do
 			[ "$pid" -eq "$parent" ] && return 0
