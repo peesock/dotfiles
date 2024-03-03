@@ -1,15 +1,16 @@
 #!/bin/sh
 # kill everything a user owns, as gracefully and as correctly as possible
-# todo: signal handling, login shell handling, kill by more than just $USER
+# todo: signal handling
 
 if [ "$1" = "nofork" ]; then shift
 else
 	exec setsid -f "$0" nofork "$@"
 fi
 
-user=$USER
 timeout=15000
+[ "$(whoami)" != root ] && user=$USER
 while true; do
+	[ "$1" = "-l" ] && { killlogin=true; shift; continue; }
 	[ "$1" = "-p" ] && { killppid=true; shift; continue; }
 	[ "$1" = "-t" ] && { timeout=$(($2 * 1000)); shift 2; continue; }
 	[ "$1" = "-u" ] && { user=$2; shift 2; continue; }
@@ -22,44 +23,61 @@ trap 'rm "$sedscript"; exit' INT TERM
 addpid(){
 	printf '/^%s$/d\n' "$@" >> "$sedscript"
 }
-addpid "$@" $([ "$killppid" ] || sed -n 's/^PPid:\s\+//p' < "/proc/$$/status")
+addpid "$@" \
+	$([ "$killppid" ] || sed -n 's/^PPid:\s\+//p' < "/proc/$$/status") \
+	$([ "$killlogin" ] || pgrep -P $(who -u | awk '{if ($1 == "'$USER'") print $6}'))
+# ignore login shell
+
+if [ "$user" ]; then
+	getpids(){
+		pgrep -u "$user"
+	}
+else
+	getpids(){
+		pgrep -v -s1
+	}
+fi
 
 pidxarger(){
 	addpid $(cut -d' ' -f4 </proc/self/stat)
-	tmp=$(pgrep -u "$user")
+	tmp=$(getpids)
+	# echo "$tmp" | less
 	echo "$tmp" | sed -f "$sedscript" | head -c -1 | xargs -d'\n' "$@"
 }
 
 # kill as much as possible to reduce process count
-echo 'killing everything...'
-pidxarger kill -s TERM 2>/dev/null
-sleep 1
-list=$(pidxarger ps -p 2>/dev/null) && {
-	echo 'remaining processes:'
-	echo "$list"
-	echo
-	
-	# of remaining/newly-spawned processes, give them one last chance
-	if env kill --version | grep -qF 'pidfd'; then
-		echo 'killing leftovers after timeout...'
-		time=$(date +%s.%N)
-		pidxarger -P0 -L1 kill --timeout "$timeout" KILL -s TERM &
-		wait
-		echo "took $(echo "$(date +%s.%N) - $time" | bc) seconds"
-	else
-		echo 'GNU kill not installed (with pidfd support). sleeping...'
-		sleep 7 &
-		wait
-	fi
-	
+pidxarger ps -o pid= -p >/dev/null 2>&1 && {
+	echo 'killing everything...'
+	pidxarger kill -s TERM 2>/dev/null
+	sleep 1
 	list=$(pidxarger ps -p 2>/dev/null) && {
 		echo 'remaining processes:'
 		echo "$list"
 		echo
-		# if something is somehow still up
-		echo 'killing anything left...'
-		# pidxarger kill -s KILL 2>/dev/null
+		
+		# of remaining/newly-spawned processes, give them one last chance
+		if env kill --version | grep -qF 'pidfd'; then
+			echo 'killing leftovers after timeout...'
+			echo "timeout time: $(($timeout / 1000))s"
+			pidxarger -P0 -L1 kill --timeout "$timeout" KILL -s TERM 2>/dev/null &
+			time=$(date +%s.%N)
+			wait
+			echo "took $(echo "$(date +%s.%N) - $time" | bc)s"
+		else
+			echo 'kill util not installed with pidfd support. sleeping...'
+			sleep 7 &
+			wait
+		fi
+		
+		list=$(pidxarger ps -p 2>/dev/null) && {
+			# if something is somehow still up
+			echo 'remaining processes:'
+			echo "$list"
+			echo
+			echo 'killing anything left...'
+			pidxarger kill -s KILL 2>/dev/null
+		}
 	}
+	echo 'done'
 }
 rm "$sedscript"
-echo 'done'
