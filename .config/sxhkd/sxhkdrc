@@ -106,7 +106,9 @@ super + shift + ctrl + l; {x,v,l}
 
 # logout
 super + shift + ctrl + q
-	pkill -u $USER
+	killer
+super + shift + ctrl + Escape
+	killer -l
 
 # Expanded Utilities
 
