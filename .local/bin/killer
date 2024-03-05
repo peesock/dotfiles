@@ -56,7 +56,7 @@ if [ "$users" ]; then
 	testpids=$(utmpdump /var/run/utmp 2>/dev/null | grep '^\[7\]' | awk -v Ain="$users" '
 		BEGIN { FS=" *\\] \\["; ORS=","; split(Ain,A,","); }
 		{
-			for (n in A) if (A[n] '"$([ "$invert" ] && echo '!=' || echo '==')"' $4) {print +$2; next}
+			for (n in A) if (A[n] '"$([ "$invert" ] && echo '!=' || echo '==')"' $4 && ! $6) {print +$2; next}
 		}' | head -c -1
 	)
 	[ "$testpids" ] &&
@@ -70,7 +70,10 @@ if [ "$users" ]; then
 		loginpids="$loginpids$(echo "$list" | awk 'BEGIN{ORS=" "}{if (! $2) print $1}')"
 		testpids="$(echo "$list" | awk 'BEGIN{ORS=","}{if ($2) print $2}' | head -c -1)"
 		[ "$testpids" ] || break
-		testpids=$(pgrep -d',' -P "$testpids") || echo "some or all login PIDs could not be linked to processes listed in users ($users). you might have a strange login system." && break
+		testpids=$(pgrep -d',' -P "$testpids") || {
+			echo "some or all login PIDs could not be linked to processes listed in users ($users). you might have a strange login system."
+			break
+		}
 	done
 else
 	loginpids=$(utmpdump /var/run/utmp 2>/dev/null | grep '^\[7\]' | awk 'BEGIN{FS=" *\\] \\["}{print +$2}')
@@ -125,9 +128,9 @@ pidxarger ps -o pid= -p >/dev/null 2>&1 && {
 			pidxarger $kill -s KILL 2>/dev/null
 		}
 	}
-	[ "$killlogin" ] || echo 'done'
+	[ "$loginpids" ] || echo 'done'
 }
-[ "$killlogin" ] && {
+[ "$loginpids" ] && {
 	echo "killing logout shells..."
 	$kill -s TERM $loginpids
 	$kill -s HUP $loginpids
