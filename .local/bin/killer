@@ -1,6 +1,4 @@
 #!/bin/sh
-# todo: signal handling
-
 # kill everything, as gracefully and as correctly as possible
 # usage:
 # killer ["nofork"] [OPTION]... [PID]...
@@ -35,7 +33,7 @@ timeout=15000
 [ "$(whoami)" = root ] || users=$USER
 while true; do
 	[ "$1" = "-c" ] && { continue=true; shift; continue; }
-	[ "$1" = "-d" ] && { kill="echo kill"; shift; continue; }
+	[ "$1" = "-d" ] && { kill="echo -> kill"; shift; continue; }
 	[ "$1" = "-l" ] && { killlogin=true; shift; continue; }
 	[ "$1" = "-p" ] && { killppid=true; shift; continue; }
 	[ "$1" = "-t" ] && { timeout=$(($2 * 1000)); shift 2; continue; }
@@ -53,20 +51,33 @@ addpid(){
 
 [ "$killppid" ] || ppid=$(cut -d' ' -f4 < "/proc/$$/stat")
 
+# find login pids: get pids from utmp file, and if any of them don't belong to any $users, find their children and see if they do.
 if [ "$users" ]; then
-	loginpids=$( (echo "$users"; who -u) | awk '
-		BEGIN { FS=","; ORS="," }
+	testpids=$(utmpdump /var/run/utmp 2>/dev/null | grep '^\[7\]' | awk -v Ain="$users" '
+		BEGIN { FS=" *\\] \\["; ORS=","; split(Ain,A,","); }
 		{
-			if (NR == 1 && FS=",") for (i=1;i<=NF;i++) A[$i]++;
-			else { FS=" "; $0=$0; for (n in A) { if (n == $1) var="true"; } if (var '"$([ "$invert" ] && echo '!=' || echo '==')"' "true") print $6; var=""; }
+			for (n in A) if (A[n] '"$([ "$invert" ] && echo '!=' || echo '==')"' $4) {print +$2; next}
 		}' | head -c -1
 	)
-	loginpids=$(pgrep -P "$loginpids")
+	[ "$testpids" ] &&
+	while true; do
+		list=$(ps -ww -o user= -o pid= -p "$testpids" | awk -v Ain="$users" '
+			BEGIN{split(Ain,A,",")}
+			{
+				for (i in A) if ($1 == A[i]) {print $2; next}
+				print $1, $2;
+			}')
+		loginpids="$loginpids$(echo "$list" | awk 'BEGIN{ORS=" "}{if (! $2) print $1}')"
+		testpids="$(echo "$list" | awk 'BEGIN{ORS=","}{if ($2) print $2}' | head -c -1)"
+		[ "$testpids" ] || break
+		testpids=$(pgrep -d',' -P "$testpids") || echo "some or all login PIDs could not be linked to processes listed in users ($users). you might have a strange login system." && break
+	done
 else
-	loginpids=$(pgrep -P "$(who -u | awk '{print $6}' | tr '\n' , | head -c -1)")
-	fi
+	loginpids=$(utmpdump /var/run/utmp 2>/dev/null | grep '^\[7\]' | awk 'BEGIN{FS=" *\\] \\["}{print +$2}')
+	# loginpids=$(pgrep -P "$(who -u | awk '{print $6}' | tr '\n' , | head -c -1)")
+fi
 
-addpid 1 "$@" $ppid $loginpids
+addpid "$@" 1 $ppid $loginpids
 
 if [ "$users" ]; then
 	alias getpids='pgrep '"$([ "$invert" ] && echo '-v ')"'-u "$users"'
@@ -77,7 +88,7 @@ fi
 pidxarger(){
 	addpid $(cut -d' ' -f4 </proc/self/stat) # like $$ but not main process
 	tmp=$(getpids)
-	echo "$tmp" | sed -f "$sedscript" | head -c -1 | xargs -d'\n' "$@"
+	echo "$tmp" | sed -f "$sedscript" | xargs -d'\n' "$@"
 }
 
 # kill as much as possible to reduce process count
@@ -110,7 +121,7 @@ pidxarger ps -o pid= -p >/dev/null 2>&1 && {
 			echo 'remaining processes:'
 			echo "$list"
 			echo
-			echo 'killing anything left...'
+			echo 'kill -9ing anything left...'
 			pidxarger $kill -s KILL 2>/dev/null
 		}
 	}
