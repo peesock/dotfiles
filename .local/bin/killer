@@ -8,7 +8,6 @@
 # options:
 # -c: send CONT signal after TERM
 # -d: dry run, echos kill commands instead of running them
-# -l: kill user login shells using HUP
 # -p: also kill parent process, only applicable with nofork
 # -t <t>: timeout time. default is 15s
 # -u <users>: set users to kill, comma delimited
@@ -34,7 +33,6 @@ timeout=15000
 while true; do
 	[ "$1" = "-c" ] && { continue=true; shift; continue; }
 	[ "$1" = "-d" ] && { kill="echo -> kill"; shift; continue; }
-	[ "$1" = "-l" ] && { killlogin=true; shift; continue; }
 	[ "$1" = "-p" ] && { killppid=true; shift; continue; }
 	[ "$1" = "-t" ] && { timeout=$(($2 * 1000)); shift 2; continue; }
 	[ "$1" = "-u" ] && { users=$2; shift 2; continue; }
@@ -51,36 +49,7 @@ addpid(){
 
 [ "$killppid" ] || ppid=$(cut -d' ' -f4 < "/proc/$$/stat")
 
-# find login pids: get pids from utmp file, and if any of them don't belong to any $users, find their children and see if they do.
-if [ "$users" ]; then
-	testpids=$(utmpdump /var/run/utmp 2>/dev/null | grep '^\[7\]' | awk -v Ain="$users" '
-		BEGIN { FS=" *\\] \\["; ORS=","; split(Ain,A,","); }
-		{
-			for (n in A) if (A[n] '"$([ "$invert" ] && echo '!=' || echo '==')"' $4 && ! $6) {print +$2; next}
-		}' | head -c -1
-	)
-	[ "$testpids" ] &&
-	while true; do
-		list=$(ps -ww -o user= -o pid= -p "$testpids" | awk -v Ain="$users" '
-			BEGIN{split(Ain,A,",")}
-			{
-				for (i in A) if ($1 == A[i]) {print $2; next}
-				print $1, $2;
-			}')
-		loginpids="$loginpids$(echo "$list" | awk 'BEGIN{ORS=" "}{if (! $2) print $1}')"
-		testpids="$(echo "$list" | awk 'BEGIN{ORS=","}{if ($2) print $2}' | head -c -1)"
-		[ "$testpids" ] || break
-		testpids=$(pgrep -d',' -P "$testpids") || {
-			echo "some or all login PIDs could not be linked to processes listed in users ($users). you might have a strange login system."
-			break
-		}
-	done
-else
-	loginpids=$(utmpdump /var/run/utmp 2>/dev/null | grep '^\[7\]' | awk 'BEGIN{FS=" *\\] \\["}{print +$2}')
-	# loginpids=$(pgrep -P "$(who -u | awk '{print $6}' | tr '\n' , | head -c -1)")
-fi
-
-addpid "$@" 1 $ppid $loginpids
+addpid "$@" 1 $ppid
 
 if [ "$users" ]; then
 	alias getpids='pgrep '"$([ "$invert" ] && echo '-v ')"'-u "$users"'
@@ -109,11 +78,12 @@ pidxarger ps -o pid= -p >/dev/null 2>&1 && {
 		if env kill --version | grep -qF 'pidfd'; then
 			echo 'killing leftovers after timeout...'
 			echo "timeout time: $((timeout / 1000))s"
-			pidxarger -P0 -L1 $kill --timeout "$timeout" KILL -s TERM 2>/dev/null &
+			pidxarger -P0 -L1 $kill --timeout "$timeout" KILL -s HUP 2>/dev/null &
 			time=$(date +%s.%N)
 			wait
 			echo "took $(echo "$(date +%s.%N) - $time" | bc)s"
 		else
+			pidxarger $kill -s HUP 2>/dev/null # handle TTY logins
 			echo 'kill util not installed with pidfd support. sleeping...'
 			sleep 7 &
 			wait
@@ -128,11 +98,6 @@ pidxarger ps -o pid= -p >/dev/null 2>&1 && {
 			pidxarger $kill -s KILL 2>/dev/null
 		}
 	}
-	[ "$loginpids" ] || echo 'done'
 }
-[ "$loginpids" ] && {
-	echo "killing logout shells..."
-	$kill -s TERM $loginpids
-	$kill -s HUP $loginpids
-}
+echo 'done'
 rm "$sedscript"

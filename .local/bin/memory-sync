@@ -129,9 +129,6 @@ exiter(){
 	status=$?
 	[ "$daemon" ] && {
 		killdaemon
-		[ "$killed" ] && {
-			[ -e "$unpackFile" ] && sync
-		}
 	}
 	[ -e "$lockFile" ] && rm -v "$lockFile"
 	echo "reached exit"
@@ -140,7 +137,8 @@ exiter(){
 trap 'killed=true; echo killed; exit' INT TERM
 trap exiter EXIT
 
-sync(){
+sync()(
+	trap '' INT TERM
 	[ "$1" = "auto" ] && {
 		if [ -e "$unpackFile" ]; then
 			sync
@@ -169,7 +167,8 @@ sync(){
 			echo "data in '$tmpDir' already exists"
 			exit 1
 		}
-		rsync -aHAWXv "$staticDir/" "$linkDir" >&2 &&
+		rsync -aHAWXv "$staticDir/" "$linkDir" >&2 &
+		wait $! &&
 			touch "$unpackFile" || {
 			log "epic fail"
 			exit 3
@@ -186,7 +185,8 @@ sync(){
 			while [ -e "$lockFile" ]; do sleep 1; done
 		}
 		touch "$lockFile"
-		rsync -aHAWXv --delete "$linkDir/" "$staticDir" >&2 || {
+		rsync -aHAWXv --delete "$linkDir/" "$staticDir" >&2 &
+		wait $! || {
 			log 'sync error!'
 			rm -v "$lockFile"
 			exit 3
@@ -194,7 +194,7 @@ sync(){
 		rm "$lockFile"
 	fi
 	echo >&2
-}
+)
 
 if [ ! "$daemon" ]; then
 	sync "${3-auto}"
