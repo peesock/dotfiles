@@ -1,4 +1,3 @@
 #!/bin/sh
-mpd
-mpc pause >/dev/null
-pidwait -x mpd
+timeout 2 sh -c 'until mpc pause; do true; done' &
+exec mpd --no-daemon
