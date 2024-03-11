@@ -6,5 +6,5 @@ while [ -z "$interface" ]; do
 	interface="$(ip route | awk '/^default via/ {print $5; exit}')"
 done
 while true; do
-	ip a show "$interface" | grep "inet " >/dev/null && break
+	ip a show "$interface" | grep -F "inet " >/dev/null && break
 done

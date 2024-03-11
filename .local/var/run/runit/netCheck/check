@@ -1,0 +1,2 @@
+#!/bin/sh
+ip a | LC_ALL=C grep -F "inet " >/dev/null || exit 1

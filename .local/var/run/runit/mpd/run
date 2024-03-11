@@ -1,3 +1,4 @@
 #!/bin/sh
-timeout 2 sh -c 'until mpc pause; do true; done' &
+sv check ../netCheck || exit 1
+timeout 5 sh -c 'until mpc pause; do true; done' >/dev/null 2>&1 &
 exec mpd --no-daemon
