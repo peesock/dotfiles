@@ -15,6 +15,8 @@ checksync(){
 }
 
 memory-sync firefox "$dir" disk 2>/dev/null & pid=$!
+svu x firefox-ram
+svurun firefox-ram
 svu u firefox-ram
 checksync 5 && {
 	wait $pid

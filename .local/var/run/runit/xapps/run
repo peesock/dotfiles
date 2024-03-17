@@ -1,14 +1,4 @@
 #!/bin/sh
-# [ -r env ] && {
-# 	unset $(env | awk -F= '/^\w/ {print $1}' | xargs)
-# 	. env
-# }
-# for file in *; do [ -h "$file" ] && rm "$file"; done
-# for dir in runsvdir/*; do ln -s "$dir" .; done
-# exec runsvdir runsvdir
-
-# {
-
 . ./conf
 for serv in $services; do
 	sv x "../$serv"
@@ -28,5 +18,3 @@ while true; do
 done
 # now turn off these services
 sv d .
-
-# } > ~/log 2>&1

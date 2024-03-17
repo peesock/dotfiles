@@ -184,10 +184,6 @@ return {
 	},
 
 	{
-		"waycrate/swhkd-vim",
-	},
-
-	{
 		"junegunn/goyo.vim",
 	},
 
@@ -219,9 +215,13 @@ return {
 	{
 		'j-hui/fidget.nvim',
 		-- enabled = false,
-		tag = "legacy",
-		event = "LspAttach",
+		-- event = "LspAttach",
 		opts = {
+			notification = {
+				window = {
+					winblend = 0,
+				},
+			}
 		},
 	},
 

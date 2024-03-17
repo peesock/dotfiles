@@ -4,10 +4,7 @@
 		# first tty login
 		if [ $i -eq 1 ]; then
 			echo hi
-			for serv in "$HOME/.local/var/run/runit"/*; do
-				# echo $serv
-				runsv "$serv" &
-			done
+			svurun "$HOME/.local/var/run/runit"/*
 		fi
 	} &
 )

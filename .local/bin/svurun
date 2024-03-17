@@ -1,0 +1,16 @@
+#!/bin/sh
+[ $# -ge 1 ] && {
+	export SVDIR="$HOME/.local/var/run/runit"
+	for serv; do
+		path="$SVDIR/$serv"
+		echo "$serv" | grep -qF '/' && path=$serv
+		{
+			if timeout 7 sh -c 'while sv check "'"$serv"'" >/dev/null; do sleep 0.1; done'; then
+				runsv "$path" &
+			else
+				echo "'$serv'" timeout
+			fi
+		} &
+	done
+	wait
+}

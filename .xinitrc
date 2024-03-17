@@ -12,9 +12,7 @@ unclutter --ignore-scrolling --start-hidden &
 
 # restart, so it has new Xorg env vars
 svu x xapps
-while svu check xapps; do sleep 0.1; done
-runsv "$HOME/.local/var/run/runit/xapps" &
-until svu u xapps; do sleep 0.1; done
+svurun xapps
 
 # Ensure that xrdb has finished running before moving on to start the WM/DE.
 [ -n "$xrdbpid" ] && wait "$xrdbpid"
