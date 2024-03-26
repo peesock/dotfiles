@@ -3,9 +3,10 @@ set -e
 # bwrap boilerplate. not meant to work everywhere, only work well enough to quickly sandbox my personal stuff.
 XDG_RUNTIME_DIR=${XDG_RUNTIME_DIR-"/run/user/$(id -u)"}
 WINEPREFIX=${WINEPREFIX-"$HOME/.wine"}
+
 executer(){
 	arg=$(eval "$2" | while read -r file; do
-		echo "$1 $file $file"
+		echo "'$1' '$file' '$file'"
 	done)
 	args="$args $arg"
 }
@@ -29,7 +30,7 @@ while true; do
 			shift
 			continue;;
 		-wine)
-			args="$args --bind-try $WINEPREFIX $WINEPREFIX"
+			args="$args --bind-try '$WINEPREFIX' '$WINEPREFIX'"
 			shift
 			continue;;
 		-xorg)
@@ -66,7 +67,12 @@ while true; do
 	esac
 	break
 done
-bwrap \
+
+[ "$(echo "$*" | wc -l)" -gt 1 ] && echo "No newlines allowd..." && exit 1
+arg=$(for arg; do echo "$arg"; done)
+args="$args $(echo "$arg" | sed "s/'/'\\\\''/g;s/^/'/;s/$/'/" | tr '\n' ' ')"
+
+eval bwrap \
 --ro-bind /usr/bin /usr/bin \
 --ro-bind /usr/share /usr/share/ \
 --ro-bind /usr/lib /usr/lib \
@@ -81,5 +87,4 @@ bwrap \
 --proc /proc \
 --dev /dev \
 --die-with-parent \
-$args \
-"$@"
+$args
