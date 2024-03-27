@@ -1,19 +1,25 @@
 #!/bin/sh
-set -e
 # bwrap boilerplate. not meant to work everywhere, only work well enough to quickly sandbox my personal stuff.
 XDG_RUNTIME_DIR=${XDG_RUNTIME_DIR-"/run/user/$(id -u)"}
 WINEPREFIX=${WINEPREFIX-"$HOME/.wine"}
 
+echo2(){
+	var=$(printf '%s ' "$@")
+	printf '%s\n' "${var%?}"
+	var=
+}
+
 executer(){
 	arg=$(eval "$2" | while read -r file; do
-		echo "'$1' '$file' '$file'"
+		printf '%s ' "'$1' '$file' '$file'"
 	done)
 	args="$args $arg"
 }
+
 while true; do
 	case "$1" in
 		-echo)
-			alias bwrap='echo bwrap'
+			echo=true
 			shift
 			continue;;
 		-more)
@@ -41,8 +47,8 @@ while true; do
 			executer "$2" "$3"
 			shift 3
 			continue;;
-		-nvidia)
-			executer --dev-bind-try 'find /dev -maxdepth 1 -name nvidia\*'
+		-graphics)
+			executer --dev-bind-try 'find /dev -maxdepth 1 -name nvidia\*; echo /dev/dri'
 			shift
 			continue;;
 		-cpu)
@@ -56,7 +62,7 @@ while true; do
 		-preset)
 			case $2 in
 				game)
-					arg='-more -wine -xorg -nvidia -cpu -audio'
+					arg='-more -wine -xorg -graphics -cpu -audio'
 					;;
 				*)
 					exit 1;;
@@ -64,15 +70,33 @@ while true; do
 			shift 2
 			set -- $arg "$@"
 			continue;;
+		-reap)
+			reap='&'
+			args="$args --unshare-pid --die-with-parent"
+			shift
+			continue;;
+		-interactive)
+			# CVE-2017-5226
+			interactive=true
+			shift
+			continue;;
 	esac
 	break
 done
 
-[ "$(echo "$*" | wc -l)" -gt 1 ] && echo "No newlines allowd..." && exit 1
-arg=$(for arg; do echo "$arg"; done)
-args="$args $(echo "$arg" | sed "s/'/'\\\\''/g;s/^/'/;s/$/'/" | tr '\n' ' ')"
+[ "$interactive" ] || args="$args --unshare-user --new-session"
 
-eval bwrap \
+
+[ "$(printf %s "$*" | wc -l)" -gt 0 ] && echo "No newlines allowd..." && exit 1
+arg=$(printf '%s\n' "$@")
+args="$args $(printf %s "$arg" | sed "s/'/'\\\\''/g;s/^/'/;s/$/'/" | tr '\n' ' ')"
+
+eval "$(
+	[ "$echo" ] &&
+		printf "echo2 "
+	[ "$reap" ] ||
+		printf "exec "
+)" bwrap \
 --ro-bind /usr/bin /usr/bin \
 --ro-bind /usr/share /usr/share/ \
 --ro-bind /usr/lib /usr/lib \
@@ -86,5 +110,30 @@ eval bwrap \
 --tmpfs /run \
 --proc /proc \
 --dev /dev \
---die-with-parent \
-$args
+$args $reap
+
+[ "$echo" ] && exit
+[ "$reap" ] && {
+	bwrap=$!
+
+	killChildren()(
+		list=$*
+		while [ "$list" ]; do
+			list=$(printf %s, $list)
+			list=${list%?}
+			list=$(ps ww -o pid= --ppid "$list")
+			biglist="$biglist $list"
+		done
+		echo killing $biglist
+		echo "$biglist" | xargs kill --
+	)
+
+	trap 'killChildren $bwrap' INT TERM HUP
+
+	while [ -d /proc/$bwrap ]; do
+		wait $bwrap
+		[ $? -gt 128 ] && echo signal detected && continue
+		break
+	done
+	echo bwrap died
+}
