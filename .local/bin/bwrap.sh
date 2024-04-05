@@ -60,7 +60,7 @@ while true; do
 			executer --ro-bind-try 'printf "/etc/%s\n" hostname hosts localtime nsswitch.conf resolv.conf'
 			shift
 			continue;;
-		-graphics)
+		-gpu)
 			executer --dev-bind-try 'find /dev -maxdepth 1 -name nvidia\*; echo /dev/dri'
 			shift
 			continue;;
@@ -82,7 +82,7 @@ while true; do
 		-preset)
 			case $2 in
 				game)
-					arg='-more -wine -xorg -graphics -cpu -audio'
+					arg='-more -wine -xorg -gpu -cpu -audio'
 					;;
 				*)
 					exit 1;;
@@ -97,6 +97,7 @@ while true; do
 		-interactive)
 			# CVE-2017-5226
 			interactive=true
+			unset reap
 			shift
 			continue;;
 	esac
@@ -155,5 +156,5 @@ $(
 		[ $? -gt 128 ] && log signal detected && continue
 		break
 	done
-	log bwrap died
+	# log bwrap died
 }
