@@ -6,12 +6,14 @@ DATA=${XDG_DATA_HOME-"$HOME/.local/share"}
 RUNTIME=${XDG_RUNTIME_DIR-"/run/user/$(id -u)"}
 WINEPREFIX=${WINEPREFIX-"$HOME/.wine"}
 
-log(){ echo "$(basename "$0"):" "$@"; }
-
 echo2(){
 	var=$(printf '%s ' "$@")
 	printf '%s\n' "${var%?}"
 	var=
+}
+
+log(){
+	echo2 "$(basename "$0"):" "$@"
 }
 
 executer(){
@@ -20,6 +22,15 @@ executer(){
 	done)
 	args="$args $arg"
 }
+
+escapist(){
+	[ $# -gt 1 ] && tr="'\0' ' '" || tr="-d '\0'"
+	printf '%s\0' "$@" | sed -z 's/'\''/'\''\\'\'\''/g; s/\(.\+\)/'\''\1'\''/g' | eval tr "$tr"
+}
+
+for var in CONFIG DATA RUNTIME WINEPREFIX; do
+	eval $var='$(escapist "'\$$var'")' # SLOW..........................
+done
 
 # defaults
 reap='&'
@@ -44,7 +55,7 @@ while true; do
 			shift
 			continue;;
 		-wine)
-			args="$args --bind-try '$WINEPREFIX' '$WINEPREFIX'"
+			args="$args --bind-try $WINEPREFIX $WINEPREFIX --bind-try $DATA/lutris $DATA/lutris"
 			shift
 			continue;;
 		-xorg)
@@ -69,14 +80,14 @@ while true; do
 			shift
 			continue;;
 		-audio)
-			executer --ro-bind-try "find '$RUNTIME' -maxdepth 1 | grep '/pipewire\|/pulse'
-				printf '%s\n' /etc/alsa /etc/pipewire /etc/pulse ~/.asoundrc '$CONFIG/pipewire' '$CONFIG/pulse'"
+			executer --ro-bind-try "find $RUNTIME -maxdepth 1 | grep '/pipewire\|/pulse'
+				printf '%s\n' /etc/alsa /etc/pipewire /etc/pulse ~/.asoundrc $CONFIG/pipewire $CONFIG/pulse"
 			shift
 			continue;;
 		-theme)
-			executer --ro-bind-try "printf '%s\n' /etc/fonts '$CONFIG/fontconfig' '$DATA/fonts' \
-				'$HOME/.icons' '$DATA/icons' '$CONFIG/Kvantum' '$CONFIG/qt'[56]'ct' \
-				'$HOME/.gtkrc-2.0' '$CONFIG/gtk-'[234]'.0'"
+			executer --ro-bind-try "printf '%s\n' /etc/fonts $CONFIG/fontconfig $DATA/fonts \
+				$HOME/.icons $DATA/icons $CONFIG/Kvantum $CONFIG/qt[56]ct \
+				$HOME/.gtkrc-2.0 $CONFIG/gtk-[234].0"
 			shift
 			continue;;
 		-preset)
@@ -100,6 +111,34 @@ while true; do
 			unset reap
 			shift
 			continue;;
+		-autobind)
+			# Walk back from argv[] and detect the first argument that exists as a
+			# path, then bind either that or its parent dir
+			i=$#
+			unset dir sym
+			while [ $i -gt 1 ]; do
+				eval arg=\$$i
+				[ -e "$arg" ] && {
+					dir=$(realpath -mLs "$arg")
+					[ -h "$dir" ] && {
+						sym=$(escapist "$dir")
+						args="$args --bind $sym $sym"
+						dir=$(readlink "$dir")
+					}
+					[ ! -d "$dir" ] && dir=$(dirname "$dir")
+					dir=$(escapist "$dir")
+					args="$args --bind $dir $dir"
+					break
+				}
+				i=$((i - 1))
+			done
+			if [ "$dir" ]; then
+				log autobound "$dir" "$sym"
+			else
+				log autobound nothing
+			fi
+			shift
+			continue;;
 	esac
 	break
 done
@@ -108,7 +147,7 @@ done
 [ "$interactive" ] || args="$args --unshare-user --new-session"
 [ "$reap" ] && args="$args --unshare-pid --die-with-parent"
 
-args="$args $(printf "%s\0" "$@" | sed -z 's/'\''/'\''\\'\''/g; s/\(.\+\)/'\''\1'\'' /g' | tr -d '\0')"
+args="$args $(escapist "$@")"
 
 $(
 	if [ "$echo" ]; then
