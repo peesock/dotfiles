@@ -177,23 +177,19 @@ $(
 	pid=$!
 
 	killChildren()(
-		list=$*
-		while [ "$list" ]; do
-			list=$(printf %s, $list)
-			list=${list%?}
-			list=$(ps ww -o pid= --ppid "$list")
-			biglist="$biglist $list"
-		done
-		log killing $biglist
-		echo "$biglist" | xargs kill --
+		export LIBPROC_HIDE_KERNEL=
+		export LC_ALL=C
+		pidns=$(ps -ww -o pidns= --ppid "$1" | grep '[0-9]' | head -n1)
+		list=$(ps -ww -e -o pidns=,pid= | grep "^\s*$pidns" | awk '{print $2}')
+		log killing $list &
+		kill -- $list
 	)
 
 	trap 'killChildren $pid' INT TERM HUP
 
 	while [ -d /proc/$pid ]; do
 		wait $pid
-		[ $? -gt 128 ] && log signal detected && continue
+		[ $? -gt 128 ] && continue
 		break
 	done
-	# log bwrap died
 }
