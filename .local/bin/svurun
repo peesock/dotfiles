@@ -1,6 +1,11 @@
 #!/bin/sh
 [ $# -ge 1 ] && {
+	svdir=$SVDIR
 	export SVDIR="$HOME/.local/var/run/runit"
+	runsv()(
+		[ "$svdir" ] && export SVDIR="$svdir" || unset SVDIR
+		command runsv "$@"
+	)
 	for serv; do
 		path="$SVDIR/$serv"
 		echo "$serv" | grep -qF '/' && path=$serv
