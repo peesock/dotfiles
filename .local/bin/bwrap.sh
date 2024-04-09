@@ -16,16 +16,22 @@ log(){
 	echo2 "$(basename "$0"):" "$@"
 }
 
-executer(){
-	arg=$(eval "$2" | while read -r file; do
-		printf '%s ' "'$1' '$file' '$file'"
-	done)
-	args="$args $arg"
+escapist(){
+	tr="tr '\0' ' '"
+	if [ $# -eq 0 ]; then
+		print="cat"
+	else
+		print='printf "%s\0" "$@"'
+		[ $# -eq 1 ] && tr="tr -d '\0'"
+	fi
+	eval "$print" | sed -z 's/'\''/'\''\\'\'\''/g; s/\(.\+\)/'\''\1'\''/g' | eval "$tr"
 }
 
-escapist(){
-	[ $# -gt 1 ] && tr="'\0' ' '" || tr="-d '\0'"
-	printf '%s\0' "$@" | sed -z 's/'\''/'\''\\'\'\''/g; s/\(.\+\)/'\''\1'\''/g' | eval tr "$tr"
+executer(){
+	arg=$(eval "$2" | while read -r file; do
+		printf '%s\0' "$1" "$file" "$file"
+	done | escapist)
+	args="$args $arg"
 }
 
 for var in CONFIG DATA RUNTIME WINEPREFIX; do
@@ -41,9 +47,15 @@ while true; do
 			echo=true
 			shift
 			continue;;
-		-more)
-			args="$args --unshare-all"
+		-noshare)
+			args="$args --unshare-user-try --unshare-ipc --unshare-pid --unshare-net --unshare-uts --unshare-cgroup-try"
 			shift
+			continue;;
+		-share)
+			for arg in $2; do
+				args=$(echo "$args" | sed 's/--unshare-'"$arg"'-try \|--unshare-'"$arg"' //g')
+			done
+			shift 2
 			continue;;
 		-env)
 			arg=$(for var in $2; do eval 'printf -- "--setenv %s %s\n" "$var" "$'"$var"'"' ; done)
@@ -93,7 +105,7 @@ while true; do
 		-preset)
 			case $2 in
 				game)
-					arg='-more -wine -xorg -gpu -cpu -audio'
+					arg='-noshare -wine -xorg -gpu -cpu -audio'
 					;;
 				*)
 					exit 1;;
@@ -179,7 +191,12 @@ $(
 	killChildren()(
 		export LIBPROC_HIDE_KERNEL=
 		export LC_ALL=C
+		log signal received
 		pidns=$(ps -ww -o pidns= --ppid "$1" | grep '[0-9]' | head -n1)
+		[ "$pidns" ] || {
+			log child already died
+			exit 1
+		}
 		list=$(ps -ww -e -o pidns=,pid= | grep "^\s*$pidns" | awk '{print $2}')
 		log killing $list &
 		kill -- $list
