@@ -70,13 +70,14 @@ while true; do
 			args="$args --bind-try $WINEPREFIX $WINEPREFIX --bind-try $DATA/lutris $DATA/lutris"
 			shift
 			continue;;
-		-xorg)
-			args="$args --ro-bind-try /tmp/.X11-unix /tmp/.X11-unix"
-			shift
-			continue;;
 		-exec)
 			executer "$2" "$3"
 			shift 3
+			continue;;
+		-xorg)
+			args="$args --bind /tmp/.X11-unix /tmp/.X11-unix"
+			executer --ro-bind 'find /tmp -maxdepth 1 | grep "/.X[0-9]\+-lock$"'
+			shift
 			continue;;
 		-net)
 			args="$args --share-net"
@@ -100,6 +101,10 @@ while true; do
 			executer --ro-bind-try "printf '%s\n' /etc/fonts $CONFIG/fontconfig $DATA/fonts \
 				$HOME/.icons $DATA/icons $CONFIG/Kvantum $CONFIG/qt[56]ct \
 				$HOME/.gtkrc-2.0 $CONFIG/gtk-[234].0"
+			shift
+			continue;;
+		-path)
+			executer --ro-bind-try 'echo "$PATH" | tr : "\n"'
 			shift
 			continue;;
 		-preset)
@@ -161,6 +166,13 @@ done
 
 args="$args $(escapist "$@")"
 
+# i=1
+# while [ $i -le $# ]; do
+# 	eval [ '"$'$i'"' = -- ] && explicit=true && break
+# 	i=$((i + 1))
+# done
+# [ "$explicit" = true ] && shift $i
+
 $(
 	if [ "$echo" ]; then
 		printf "echo2 "; else
@@ -197,7 +209,7 @@ $(
 			log child already died
 			exit 1
 		}
-		list=$(ps -ww -e -o pidns=,pid= | grep "^\s*$pidns" | awk '{print $2}')
+		list=$(ps -ww -e -o pidns=,pid= | grep '^\s*'"$pidns"'\s' | awk '{print $2}')
 		log killing $list &
 		kill -- $list
 	)
