@@ -1,0 +1,32 @@
+#!/bin/sh
+[ $# -eq 0 ] && exit 1
+screenW=$(xrandr --current | grep '\*' | uniq | awk '{print $1}')
+screenH=$(echo $screenW | cut -d'x' -f2)
+screenW=$(echo $screenW | cut -d'x' -f1)
+
+trap 'rm "$wait"; exit' INT TERM HUP
+wait=$(mktemp -u)
+mkfifo "$wait"
+inotifywait -t 5 --event create --format %f /tmp/.X11-unix >"$wait" 2>&1 &
+# wait for watches to be set up
+while read -r line; do echo "$line" | grep -Fq 'Watches established.' && break; done <"$wait"
+
+weston --width="$screenW" --height="$screenH" --shell=kiosk --xwayland --fullscreen & weston=$!
+(waitpid $weston; kill $$) & daemon=$!
+
+display=$(mktemp)
+trap 'rm "$wait" "$display"; exit 2' INT TERM HUP
+cut -c2 -- "$wait" >"$display" &
+wait $!
+rm "$wait"
+display=$(cat "$display"; rm "$display")
+[ "$display" ] || {
+	echo "$0": detected no new display
+	kill $weston
+	exit 1
+}
+trap 'kill $!' INT TERM HUP
+export DISPLAY=":$display"
+"$@" &
+wait $!
+kill $daemon $weston
