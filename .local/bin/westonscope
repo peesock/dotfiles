@@ -16,7 +16,7 @@ weston --width="$screenW" --height="$screenH" --shell=kiosk --xwayland --fullscr
 
 display=$(mktemp)
 trap 'rm "$wait" "$display"; exit 2' INT TERM HUP
-cut -c2 -- "$wait" >"$display" &
+cut -c2- -- "$wait" >"$display" &
 wait $!
 rm "$wait"
 display=$(cat "$display"; rm "$display")

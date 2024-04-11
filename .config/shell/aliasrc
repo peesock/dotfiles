@@ -19,8 +19,8 @@ sandsh(){ # stop rogue NPM packages from deleting ~ or something
 		cd "$1" || exit 1
 		shift
 	}
-	bwrap.sh -more -interactive --share-net --hostname SANDBOX --ro-bind /etc /etc \
-		--ro-bind "$HOME" "$HOME" --bind "$PWD" "$PWD" --bind ~/.cache ~/.cache "$SHELL" "$@"
+	bwrap.sh -preset game -interactive -exec --ro-bind 'echo "$HOME"' -exec --bind 'printf "%s\n" "$PWD" ~/.cache /tmp $DATA/nvim $DATA/../state/nvim' \
+		--share-net --hostname SANDBOX --ro-bind /etc /etc "$SHELL" "$@"
 }
 
 # Verbosity and settings that you pretty much just always are going to want.

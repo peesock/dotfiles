@@ -95,7 +95,7 @@ pidxarger ps -o pid= -p >/dev/null 2>&1 && {
 			echo "$list"
 			echo
 			echo 'kill -9ing anything left...'
-			pidxarger $kill -s KILL 2>/dev/null
+			env $kill -s KILL -- -1
 		}
 	}
 }
