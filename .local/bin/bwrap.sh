@@ -70,14 +70,14 @@ while true; do
 			args="$args --bind-try $WINEPREFIX $WINEPREFIX --bind-try $DATA/lutris $DATA/lutris"
 			shift
 			continue;;
+		-xorg)
+			display=$(echo "$DISPLAY" | cut -c2-)
+			args="$args --bind /tmp/.X11-unix/X$display /tmp/.X11-unix/X$display"
+			shift
+			continue;;
 		-exec)
 			executer "$2" "$3"
 			shift 3
-			continue;;
-		-xorg)
-			args="$args --bind /tmp/.X11-unix /tmp/.X11-unix"
-			executer --ro-bind 'find /tmp -maxdepth 1 | grep "/.X[0-9]\+-lock$"'
-			shift
 			continue;;
 		-net)
 			args="$args --share-net"
