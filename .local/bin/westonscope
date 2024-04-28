@@ -4,29 +4,39 @@ screenW=$(xrandr --current | grep '\*' | uniq | awk '{print $1}')
 screenH=$(echo $screenW | cut -d'x' -f2)
 screenW=$(echo $screenW | cut -d'x' -f1)
 
-trap 'rm "$wait"; exit' INT TERM HUP
-wait=$(mktemp -u)
-mkfifo "$wait"
-inotifywait -t 5 --event create --format %f /tmp/.X11-unix >"$wait" 2>&1 &
+exiter(){
+	s=$?
+	[ "$waitfile" ] && rm "$waitfile"
+	[ "$displayfile" ] && rm "$displayfile"
+	[ "$program" ] && [ -d /proc/$program ] && kill $program
+	[ "$daemon" ] && kill "$daemon" "$weston"
+	exit $s
+}
+trap 'exit' INT TERM HUP
+trap 'unset daemon; exit 2' USR1
+trap 'exiter' EXIT
+notifyfile=$(mktemp -u)
+mkfifo "$notifyfile"
+inotifywait -t 3 --event create --format %f /tmp/.X11-unix >"$notifyfile" 2>&1 &
 # wait for watches to be set up
-while read -r line; do echo "$line" | grep -Fq 'Watches established.' && break; done <"$wait"
+while read -r line; do echo "$line" | grep -Fq 'Watches established.' && break; done <"$notifyfile"
 
 weston --width="$screenW" --height="$screenH" --shell=kiosk --xwayland --fullscreen & weston=$!
-(waitpid $weston; kill $$) & daemon=$!
+(waitpid $weston; kill -s USR1 $$) & daemon=$!
 
-display=$(mktemp)
-trap 'rm "$wait" "$display"; exit 2' INT TERM HUP
-cut -c2- -- "$wait" >"$display" &
+displayfile=$(mktemp)
+cut -c2- -- "$notifyfile" >"$displayfile" &
 wait $!
-rm "$wait"
-display=$(cat "$display"; rm "$display")
+display=$(cat "$displayfile")
+rm "$displayfile" "$notifyfile"
+unset displayfile notifyfile
+
 [ "$display" ] || {
 	echo "$0": detected no new display
-	kill $weston
 	exit 1
 }
-trap 'kill $!' INT TERM HUP
+
+kill $daemon
+(waitpid $$; kill $weston) &
 export DISPLAY=":$display"
-"$@" &
-wait $!
-kill $daemon $weston
+exec "$@"
