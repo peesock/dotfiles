@@ -1,5 +1,6 @@
 #!/bin/sh
 # bwrap boilerplate. not meant to work everywhere, only work well enough to quickly sandbox my personal stuff.
+# note: add function to escape variables like $DATA without having to fuck up the DATA variable
 
 CONFIG=${XDG_CONFIG_HOME-"$HOME/.config"}
 DATA=${XDG_DATA_HOME-"$HOME/.local/share"}
@@ -80,9 +81,9 @@ while true; do
 			shift 3
 			continue;;
 		-net)
-			args="$args --share-net"
-			executer --ro-bind-try 'printf "/etc/%s\n" hostname hosts localtime nsswitch.conf resolv.conf'
+			executer --ro-bind-try 'printf "/etc/%s\n" hostname hosts localtime nsswitch.conf resolv.conf ca-certificates ssl'
 			shift
+			set -- -share net "$@"
 			continue;;
 		-gpu)
 			executer --dev-bind-try 'find /dev -maxdepth 1 -name nvidia\*; echo /dev/dri'
