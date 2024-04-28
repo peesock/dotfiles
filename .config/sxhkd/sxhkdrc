@@ -50,6 +50,9 @@ super + a; d
 # open torrent client
 super + a; t
 	deluge
+# firewall
+super + a; f
+	opensnitch-ui
 
 super + a; n
 	nm-connection-editor
