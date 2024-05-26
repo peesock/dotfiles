@@ -5,10 +5,6 @@
 [ $# -lt 1 ] && exit
 while true; do
 	case "$1" in
-		-nopersist)
-			nopersist=true
-			shift
-			continue;;
 		-float)
 			float=true
 			shift
@@ -52,21 +48,16 @@ begin(){
 	printf '%s\n' "$wid" "$pid" > "$path/$id"
 	(kill $!; waitpid $pid; rm "$path/$id") &
 	compute
-	[ "$batch1" ] || [ "$batch2" ] && hyprctl --batch "$batch1 $batch2"
+	hyprctl --batch "dispatch focuswindow address:$wid ; $batch1 $batch2"
 	exit
 }
 
 compute(){
-	echo2(){
-		printf '%s ' "$@"
-	}
-	batch1=$(
-		[ "$float" ] && echo2 "dispatch setfloating address:$wid ;"
-		[ "$resize" ] && echo2 "dispatch resizewindowpixel $resize,address:$wid ;"
-	)
-	batch2=$(
-		[ "$center" ] && echo2 "dispatch centerwindow ;"
-	)
+	batch1="dispatch alterzorder top,address:$wid ;"
+	[ "$float" ] && batch1="$batch1 dispatch setfloating address:$wid ;"
+	[ "$resize" ] && batch1="$batch1 dispatch resizewindowpixel $resize,address:$wid ;"
+
+	[ "$center" ] && batch2="$batch2 dispatch centerwindow ;"
 }
 
 # check if data file and then window exists
@@ -75,10 +66,8 @@ wid=$(sed -n 1p "$path/$id")
 data=$(hyprctl -j clients)
 echo "$data" | grep -qF '"address": "'"$wid"'"' || begin
 if [ "$(echo "$data" | jq '.[] | select(.address=="'"$wid"'") | .workspace.name | test("special")')" = 'true' ]; then
-	[ "$nopersist" ] || compute
-	hyprctl dispatch movetoworkspace +0,address:"$wid"
-	[ "$batch2" ] && hyprctl --batch "$batch2"
+	compute
+	hyprctl --batch "$batch1 dispatch movetoworkspace +0,address:$wid ; $batch2"
 else
-	hyprctl dispatch movetoworkspacesilent special,address:"$wid"
-	[ "$batch1" ] && hyprctl --batch "$batch1"
+	hyprctl --batch "dispatch focuscurrentorlast ; dispatch movetoworkspacesilent special,address:$wid"
 fi >/dev/null
