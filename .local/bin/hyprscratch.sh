@@ -69,5 +69,6 @@ if [ "$(echo "$data" | jq '.[] | select(.address=="'"$wid"'") | .workspace.name 
 	compute
 	hyprctl --batch "$batch1 dispatch movetoworkspace +0,address:$wid ; $batch2"
 else
-	hyprctl --batch "dispatch focuscurrentorlast ; dispatch movetoworkspacesilent special,address:$wid"
+	# echo "$data" | jq '.[] | select(.address=="'"$wid"'") | .workspace.id '
+	hyprctl --batch "dispatch movetoworkspacesilent special,address:$wid"
 fi >/dev/null

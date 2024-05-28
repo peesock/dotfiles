@@ -101,7 +101,7 @@ while true; do
 		-theme)
 			executer --ro-bind-try "printf '%s\n' /etc/fonts $CONFIG/fontconfig $DATA/fonts \
 				$HOME/.icons $DATA/icons $CONFIG/Kvantum $CONFIG/qt[56]ct \
-				$HOME/.gtkrc-2.0 $CONFIG/gtk-[234].0"
+				$HOME/.gtkrc-2.0 $CONFIG/gtk-[234].0 $CONFIG/xsettingsd"
 			shift
 			continue;;
 		-path)

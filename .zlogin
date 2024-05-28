@@ -4,7 +4,7 @@
 		# first tty login
 		if [ $i -eq 1 ]; then
 			echo hi
-			svurun "$HOME/.local/var/run/runit"/*
+			basename -za "$HOME/.local/var/run/runit"/* | xargs -0 svurun
 		fi
 	} &
 )

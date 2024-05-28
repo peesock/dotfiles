@@ -1,5 +1,8 @@
 #!/bin/sh
-# randomly sets the background with a single xwallpaper argument.
-
 rngbg=$(find "$HOME/pics/wallpapers" -type f -print | shuf -n 1)
-xwallpaper $1 $rngbg
+if [ "$WAYLAND_DISPLAY" ]; then
+	killall swaybg 2>/dev/null
+	swaybg -i "$rngbg" -m "${1#--}" &
+else
+	xwallpaper "$1" "$rngbg"
+fi

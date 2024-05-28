@@ -15,4 +15,3 @@ export GOPATH="$HOME/.local/share/go/"
 export DBUS_SESSION_BUS_ADDRESS="autolaunch:"
 # eval $(dbus-launch --auto-syntax)
 export MPD_HOST="$HOME/.local/share/mpd/socket"
-export WLR_NO_HARDWARE_CURSORS=1

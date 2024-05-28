@@ -4,14 +4,15 @@
 	export SVDIR="$HOME/.local/var/run/runit"
 	runsv()(
 		[ "$svdir" ] && export SVDIR="$svdir" || unset SVDIR
-		command runsv "$@"
+		command runsv "$@" &
 	)
 	for serv; do
 		path="$SVDIR/$serv"
 		echo "$serv" | grep -qF '/' && path=$serv
 		{
 			if timeout 7 sh -c 'while sv check "'"$serv"'" >/dev/null; do sleep 0.1; done'; then
-				runsv "$path" &
+				runsv "$path"
+				exit
 			else
 				echo "'$serv'" timeout
 			fi
