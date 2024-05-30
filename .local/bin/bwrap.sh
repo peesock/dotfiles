@@ -1,11 +1,11 @@
 #!/bin/sh
 # bwrap boilerplate. not meant to work everywhere, only work well enough to quickly sandbox my personal stuff.
-# note: add function to escape variables like $DATA without having to fuck up the DATA variable
+# todo: put args into file descriptor instead of cli
 
-CONFIG=${XDG_CONFIG_HOME-"$HOME/.config"}
-DATA=${XDG_DATA_HOME-"$HOME/.local/share"}
-RUNTIME=${XDG_RUNTIME_DIR-"/run/user/$(id -u)"}
-WINEPREFIX=${WINEPREFIX-"$HOME/.wine"}
+export XDG_CONFIG_HOME="${XDG_CONFIG_HOME-"$HOME/.config"}"
+export XDG_DATA_HOME="${XDG_DATA_HOME-"$HOME/.local/share"}"
+export XDG_RUNTIME_DIR="${XDG_RUNTIME_DIR-"/run/user/$(id -u)"}"
+export WINEPREFIX="${WINEPREFIX-"$HOME/.wine"}"
 
 echo2(){
 	var=$(printf '%s ' "$@")
@@ -25,19 +25,34 @@ escapist(){
 		print='printf "%s\0" "$@"'
 		[ $# -eq 1 ] && tr="tr -d '\0'"
 	fi
-	eval "$print" | sed -z 's/'\''/'\''\\'\'\''/g; s/\(.\+\)/'\''\1'\''/g' | eval "$tr"
+	eval "$print" | sed -z 's/'\''/'\''\\'\'\''/g; s/\(.*\)/'\''\1'\''/g' | eval "$tr"
 }
 
 executer(){
 	arg=$(eval "$2" | while read -r file; do
-		printf '%s\0' "$1" "$file" "$file"
-	done | escapist)
+		escapist "$1" "$file" "$file"
+	done)
 	args="$args $arg"
 }
 
-for var in CONFIG DATA RUNTIME WINEPREFIX; do
-	eval $var='$(escapist "'\$$var'")' # SLOW..........................
-done
+fd=3
+databinder(){
+	# --file, --bind-data, --ro-bind-data, location, data
+	args="$args $1 $fd $2"
+	fdsetup="$fdsetup exec $fd<<EOF
+$3
+EOF
+"
+	fd=$((fd + 1))
+}
+
+CONFIG=$XDG_CONFIG_HOME
+DATA=$XDG_DATA_HOME
+RUNTIME=$XDG_RUNTIME_DIR
+WINE=$WINEPREFIX
+# vars to add escape sequences to
+vars="CONFIG DATA RUNTIME WINE"
+eval "$(for var in $vars; do eval printf '%s="%s"\\0' '$var' '"$'"$var"'"'; done | sed -z 's/'\''/'\''\\'\'\''/g; s/\(.\+=\)\(.*\)/\1'\''\2'\''/g' | tr '\0' '\n')"
 
 # defaults
 reap='&'
@@ -59,7 +74,7 @@ while true; do
 			shift 2
 			continue;;
 		-env)
-			arg=$(for var in $2; do eval 'printf -- "--setenv %s %s\n" "$var" "$'"$var"'"' ; done)
+			arg=$(for var in $2; do eval 'printf -- "--setenv %s %s " "$var" "$(escapist "$'"$var"'")"' ; done)
 			args="$args --clearenv $arg"
 			shift 2
 			continue;;
@@ -68,17 +83,26 @@ while true; do
 			shift
 			continue;;
 		-wine)
-			args="$args --bind-try $WINEPREFIX $WINEPREFIX --bind-try $DATA/lutris $DATA/lutris"
+			args="$args --bind-try $WINE $WINE --bind-try $DATA/lutris $DATA/lutris"
 			shift
 			continue;;
-		-xorg)
-			display=$(echo "$DISPLAY" | cut -c2-)
-			args="$args --bind /tmp/.X11-unix/X$display /tmp/.X11-unix/X$display"
+		-display)
+			[ "$DISPLAY" ] && {
+				display=$(echo "$DISPLAY" | cut -c2-)
+				args="$args --bind /tmp/.X11-unix/X$display /tmp/.X11-unix/X$display"
+			}
+			[ "$WAYLAND_DISPLAY" ] && {
+				args="$args --bind $RUNTIME/$WAYLAND_DISPLAY $RUNTIME/$WAYLAND_DISPLAY"
+			}
 			shift
 			continue;;
 		-exec)
 			executer "$2" "$3"
 			shift 3
+			continue;;
+		-data)
+			databinder "$2" "$3" "$4"
+			shift 4
 			continue;;
 		-net)
 			executer --ro-bind-try 'printf "/etc/%s\n" hostname hosts localtime nsswitch.conf resolv.conf ca-certificates ssl'
@@ -86,7 +110,7 @@ while true; do
 			set -- -share net "$@"
 			continue;;
 		-gpu)
-			executer --dev-bind-try 'find /dev -maxdepth 1 -name nvidia\*; echo /dev/dri'
+			executer --dev-bind-try 'find /dev -maxdepth 1 -name nvidia\*; printf "%s\n" /dev/dri /sys/dev/char /sys/devices/pci0*'
 			shift
 			continue;;
 		-cpu)
@@ -99,10 +123,19 @@ while true; do
 			shift
 			continue;;
 		-theme)
-			executer --ro-bind-try "printf '%s\n' /etc/fonts $CONFIG/fontconfig $DATA/fonts \
+			executer --bind-try "printf '%s\n' /etc/fonts $CONFIG/fontconfig $DATA/fonts \
 				$HOME/.icons $DATA/icons $CONFIG/Kvantum $CONFIG/qt[56]ct \
-				$HOME/.gtkrc-2.0 $CONFIG/gtk-[234].0 $CONFIG/xsettingsd"
+				$HOME/.gtkrc-2.0 $CONFIG/gtk-[234].0 $CONFIG/xsettingsd $DATA/mime $CONFIG/mimeapps.list \
+				$CONFIG/dconf"
 			shift
+			continue;;
+		-dbus) # and portals,,, experimental (BECAUSE PORTALS STILL SUCK)
+			executer --bind-try 'printf "%s\n" /tmp/dbus-* /run/dbus /etc/machine-id /etc/passwd $CONFIG/xdg-desktop-portal'
+# 			databinder --ro-bind-data /.flatpak-info "[Application]
+# name=org.mozilla.firefox"
+			# export DBUS_SESSION_BUS_ADDRESS="unix:path=$XDG_RUNTIME_DIR/bus"
+			shift
+			set -- -share ipc "$@"
 			continue;;
 		-path)
 			executer --ro-bind-try 'echo "$PATH" | tr : "\n"'
@@ -111,13 +144,16 @@ while true; do
 		-preset)
 			case $2 in
 				game)
-					arg='-noshare -wine -xorg -gpu -cpu -audio'
+					arg='-noshare -wine -display -gpu -cpu -audio'
+					;;
+				browser)
+					arg='-noshare -net -dbus -display -gpu -cpu -audio -theme'
 					;;
 				*)
 					exit 1;;
 			esac
 			shift 2
-			set -- $arg "$@"
+			eval set -- "$arg" "$(escapist "$@")"
 			continue;;
 		-noreap)
 			unset reap
@@ -167,13 +203,7 @@ done
 
 args="$args $(escapist "$@")"
 
-# i=1
-# while [ $i -le $# ]; do
-# 	eval [ '"$'$i'"' = -- ] && explicit=true && break
-# 	i=$((i + 1))
-# done
-# [ "$explicit" = true ] && shift $i
-
+eval "$fdsetup"
 $(
 	if [ "$echo" ]; then
 		printf "echo2 "; else

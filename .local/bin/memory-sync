@@ -39,8 +39,10 @@ while true; do
 	[ "$1" = "-d" ] && { timeDown=$2; shift 2; continue; }
 	[ "$1" = "-t" ] && { timeCheck=$2; shift 2; continue; }
 	[ "$1" = "-D" ] && {
-		daemon=true && shift &&
-			[ "$1" = "-e" ] && { exitDown=true; exitDownWait=true; exitCheck=true; shift; }
+		daemon=true && shift && {
+			[ "$1" = "-e" ] && { exitDown=true; shift; }
+			[ "$1" = "-E" ] && { exitDown=true; exitDownWait=true; exitCheck=true; shift; }
+		}
 		continue
 	}
 	[ "$1" = "-C" ] && { clean=true; shift; continue; }
@@ -209,32 +211,14 @@ else
 			}
 		else # launch daemon
 			{
-				trap 'kill -- $watchPID; kill -- $loopPID 2>/dev/null; exit' TERM INT
-				{
-					trap 'exit' INT TERM
-					trap 'kill -- "$sleepPID" 2>/dev/null' EXIT
-					while true; do
-						[ -d "/proc/$$" ] || exit # additional check
-						sleep "$1" & sleepPID=$!
-						wait $!
-						sync
-					done
-				} & loopPID=$!
-				{
-					{
-						waitpid $$
-						log 'daemon: parent was murdered'
-						kill $loopPID
-					} & pid=$!
-					{
-						waitpid $loopPID
-						log 'daemon was killed'
-						kill $$
-					} & pid="$pid $!"
-					trap 'kill $pid 2>/dev/null' INT TERM
-					wait
-				} & watchPID=$!
-				while true; do wait && break; done # recieve signals
+				trap 'exit' INT TERM
+				trap 'kill -- "$sleepPID" 2>/dev/null' EXIT
+				while true; do
+					# [ -d "/proc/$$" ] || exit # additional check
+					sleep "$1" & sleepPID=$!
+					wait $!
+					sync
+				done
 			} & daemonPID=$!
 		fi
 	}

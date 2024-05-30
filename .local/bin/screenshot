@@ -8,7 +8,7 @@ if [ "$WAYLAND_DISPLAY" ]; then
 		wl-copy -t "image/png" < "$out"
 	}
 	crop(){
-		slurp -b 00000000
+		slurp -b 00000000 -c ffffffff -w 1
 	}
 	screenshot(){
 		if [ "$select" ]; then

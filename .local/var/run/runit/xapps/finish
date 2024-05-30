@@ -1,5 +1,0 @@
-#!/bin/sh
-. ./conf
-for serv in $services; do
-	sv d "../$serv"
-done

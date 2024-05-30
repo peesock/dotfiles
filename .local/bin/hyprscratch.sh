@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/sh -x
 # i have become aware of a hyprland plugin that already does this BUT ITS PYTHON
 
 # requires netcat
@@ -53,7 +53,7 @@ begin(){
 }
 
 compute(){
-	batch1="dispatch alterzorder top,address:$wid ;"
+	batch1="dispatch focuswindow address:$wid ; dispatch alterzorder top,address:$wid ;"
 	[ "$float" ] && batch1="$batch1 dispatch setfloating address:$wid ;"
 	[ "$resize" ] && batch1="$batch1 dispatch resizewindowpixel $resize,address:$wid ;"
 
@@ -69,6 +69,5 @@ if [ "$(echo "$data" | jq '.[] | select(.address=="'"$wid"'") | .workspace.name 
 	compute
 	hyprctl --batch "$batch1 dispatch movetoworkspace +0,address:$wid ; $batch2"
 else
-	# echo "$data" | jq '.[] | select(.address=="'"$wid"'") | .workspace.id '
 	hyprctl --batch "dispatch movetoworkspacesilent special,address:$wid"
 fi >/dev/null

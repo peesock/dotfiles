@@ -1,19 +1,19 @@
 #!/bin/sh
 # startup services for display sessions
 
+xrdb ${XDG_CONFIG_HOME:-$HOME/.config}/x11/xresources & xrdbpid=$!	# use Xresources colors/settings on startup
+
 setbg --stretch & # set background
 # xrandr --dpi 102 # Set DPI.
 xorg.sh # fixes keyboard assshittery
 
-xrdb ${XDG_CONFIG_HOME:-$HOME/.config}/x11/xresources & xrdbpid=$!	# use Xresources colors/settings on startup
-
 xsetroot -cursor_name left_ptr # ensures correct cursor on X root window
 unclutter --ignore-scrolling --start-hidden &
 
-# restart, so it has new Xorg env vars
-svu x xapps
-svurun xapps
-svu u xapps
+# sxhkd &
+# picom &
+# dunst &
+opensnitch-ui --background &
 
 # Ensure that xrdb has finished running before moving on to start the WM/DE.
 [ -n "$xrdbpid" ] && wait "$xrdbpid"
