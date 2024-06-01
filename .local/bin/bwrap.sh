@@ -1,6 +1,19 @@
 #!/bin/sh
-# bwrap boilerplate. not meant to work everywhere, only work well enough to quickly sandbox my personal stuff.
-# todo: finish putting args into argfile
+# bwrap wrapper to easily whitelist specific functions.
+
+# Things to note:
+# This script tries to add as few arguments to `bwrap` as possible,
+# merely improving the cli rather than making a new one. -interactive
+# and -noreap are exceptions.
+# Using -interactive can allow arbitrary code execution if connected to
+# a terminal and lacking mitigations.
+# Using -noreap can allow programs to fork bomb you with no effective
+# means of death, unless you re-unshare pid namespace later on and
+# kill -9 the bwrap parent.
+# Without -noreap, sending $$ kill -INT and kill -TERM will send their
+# respective signals to all sandboxed children. Sending HUP will
+# KILL every child.
+# *All* of /bin, /lib, and /usr/share are made visible.
 
 export XDG_CONFIG_HOME="${XDG_CONFIG_HOME-"$HOME/.config"}"
 export XDG_DATA_HOME="${XDG_DATA_HOME-"$HOME/.local/share"}"
@@ -13,8 +26,9 @@ echo2(){
 	var=
 }
 
+programName=$(basename "$0")
 log(){
-	echo2 "$(basename "$0"):" "$@"
+	echo2 "$programName:" "$@"
 }
 
 escapist(){
@@ -28,10 +42,6 @@ escapist(){
 	eval "$print" | sed -z 's/'\''/'\''\\'\'\''/g; s/\(.*\)/'\''\1'\''/g' | eval "$tr"
 }
 
-executer(){
-	args="$args $(eval "$2" | sed -z 's/'\''/'\''\\'\'\''/g; s/\(.*\)/'\''\1'\''/g; s/\(.\+\)/'"$1"' \1 \1 /' | tr -d '\0')"
-}
-
 getfd(){
 	ls -1 /dev/fd | sed 's/.*\///' | sort -n | awk 'n<$1{exit}{n=$1+1}END{print n}'
 }
@@ -40,8 +50,9 @@ databinder(){
 	# --file, --bind-data, --ro-bind-data, location, data
 	fd=$(getfd)
 	args="$args $1 $fd $2"
+	append "$1" "$fd" "$2"
 	datasetup="$datasetup exec $fd<<EOF
-\$3
+$3
 EOF
 "
 }
@@ -54,13 +65,35 @@ exiter(){
 }
 trap exiter EXIT
 
-CONFIG=$XDG_CONFIG_HOME
-DATA=$XDG_DATA_HOME
-RUNTIME=$XDG_RUNTIME_DIR
-WINE=$WINEPREFIX
-# vars to add escape sequences to
-vars="CONFIG DATA RUNTIME WINE"
-eval "$(for var in $vars; do eval printf '%s="%s"\\0' '$var' '"$'"$var"'"'; done | sed -z 's/'\''/'\''\\'\'\''/g; s/\(.\+=\)\(.*\)/\1'\''\2'\''/g' | tr '\0' '\n')"
+append(){
+	printf "%s\0" "$@" >> "$argfile"
+}
+appath(){
+	opt=$1
+	shift
+	if [ $# -gt 0 ]; then
+		for arg; do
+			printf "%s\0%s\0%s\0" "$opt" "$arg" "$arg"
+		done
+	else # when piped
+		sed -z 's/\(.*\)/'"$opt"'\x0\1\x0\1/'
+	fi
+} >> "$argfile"
+
+append \
+--ro-bind /usr/bin /usr/bin \
+--ro-bind /usr/share /usr/share/ \
+--ro-bind /usr/lib /usr/lib \
+--ro-bind /usr/lib32 /usr/lib32 \
+--symlink lib /usr/lib64 \
+--symlink /usr/lib /lib64 \
+--symlink /usr/lib /lib \
+--symlink /usr/bin /bin \
+--symlink /usr/bin /sbin \
+--tmpfs /tmp \
+--tmpfs /run \
+--proc /proc \
+--dev /dev
 
 # defaults
 reap='&'
@@ -72,40 +105,40 @@ while true; do
 			shift
 			continue;;
 		-noshare)
-			args="$args --unshare-user-try --unshare-ipc --unshare-pid --unshare-net --unshare-uts --unshare-cgroup-try"
+			append --unshare-user-try --unshare-ipc --unshare-pid --unshare-net --unshare-uts --unshare-cgroup-try
 			shift
 			continue;;
 		-share)
 			for arg in $2; do
-				args=$(echo "$args" | sed 's/--unshare-'"$arg"'-try \|--unshare-'"$arg"' //g')
+				sed -zi '/^--unshare-'"$arg"'-try$\|^--unshare-'"$arg"'$/d' "$argfile"
 			done
 			shift 2
 			continue;;
 		-env)
-			arg=$(for var in $2; do eval 'printf -- "--setenv %s %s " "$var" "$(escapist "$'"$var"'")"' ; done)
-			args="$args --clearenv $arg"
+			append --clearenv
+			for var in $2; do eval 'printf -- "--setenv\0%s\0%s\0" "$var" "$'"$var"'"' ; done >> "$argfile"
 			shift 2
 			continue;;
 		-root)
-			args="$args --unshare-user --uid 0 --gid 0 --setenv USER root --setenv HOME /root"
+			append --unshare-user --uid 0 --gid 0 --setenv USER root --setenv HOME /root
 			shift
 			continue;;
 		-wine)
-			args="$args --bind-try $WINE $WINE --bind-try $DATA/lutris $DATA/lutris"
+			appath --bind-try "$WINEPREFIX" "$XDG_DATA_HOME"/lutris
 			shift
 			continue;;
 		-display)
 			[ "$DISPLAY" ] && {
 				display=$(echo "$DISPLAY" | cut -c2-)
-				args="$args --bind /tmp/.X11-unix/X$display /tmp/.X11-unix/X$display"
+				appath --bind "/tmp/.X11-unix/X$display"
 			}
 			[ "$WAYLAND_DISPLAY" ] && {
-				args="$args --bind $RUNTIME/$WAYLAND_DISPLAY $RUNTIME/$WAYLAND_DISPLAY"
+				appath --bind "$XDG_RUNTIME_DIR/$WAYLAND_DISPLAY"
 			}
 			shift
 			continue;;
 		-exec)
-			executer "$2" "$3"
+			eval "$3" | appath "$2"
 			shift 3
 			continue;;
 		-data)
@@ -113,32 +146,33 @@ while true; do
 			shift 4
 			continue;;
 		-net)
-			executer --ro-bind-try 'printf "/etc/%s\0" hostname hosts localtime nsswitch.conf resolv.conf ca-certificates ssl'
+			printf "/etc/%s\0" hostname hosts localtime nsswitch.conf resolv.conf ca-certificates ssl | appath --ro-bind-try
 			shift
 			set -- -share net "$@"
 			continue;;
 		-gpu)
-			executer --dev-bind-try 'find /dev -maxdepth 1 -name nvidia\* -print0; printf "%s\0" /dev/dri /sys/dev/char /sys/devices/pci0*'
+			find /dev -maxdepth 1 -name nvidia\* -print0 | appath --dev-bind-try
+			appath --dev-bind-try /dev/dri /sys/dev/char /sys/devices/pci0*
 			shift
 			continue;;
 		-cpu)
-			args="$args --dev-bind-try /sys/devices/system/cpu /sys/devices/system/cpu"
+			appath --dev-bind-try /sys/devices/system/cpu
 			shift
 			continue;;
 		-audio)
-			executer --ro-bind-try "find $RUNTIME -maxdepth 1 -print0 | grep -z '/pipewire\|/pulse'
-				printf '%s\0' /etc/alsa /etc/pipewire /etc/pulse ~/.asoundrc $CONFIG/pipewire $CONFIG/pulse"
+			find "$XDG_RUNTIME_DIR" -maxdepth 1 -print0 | grep -z '/pipewire\|/pulse' | appath --ro-bind-try
+			appath --ro-bind-try /etc/alsa /etc/pipewire /etc/pulse ~/.asoundrc "$XDG_CONFIG_HOME"/pipewire "$XDG_CONFIG_HOME"/pulse
 			shift
 			continue;;
 		-theme)
-			executer --bind-try "printf '%s\0' /etc/fonts $CONFIG/fontconfig $DATA/fonts \
-				$HOME/.icons $DATA/icons $CONFIG/Kvantum $CONFIG/qt[56]ct \
-				$HOME/.gtkrc-2.0 $CONFIG/gtk-[234].0 $CONFIG/xsettingsd $DATA/mime $CONFIG/mimeapps.list \
-				$CONFIG/dconf"
+			appath --bind-try /etc/fonts "$XDG_CONFIG_HOME"/fontconfig "$XDG_DATA_HOME"/fonts \
+				"$HOME"/.icons "$XDG_DATA_HOME"/icons "$XDG_CONFIG_HOME"/Kvantum "$XDG_CONFIG_HOME"/qt[56]ct \
+				"$HOME"/.gtkrc-2.0 "$XDG_CONFIG_HOME"/gtk-[234].0 "$XDG_CONFIG_HOME"/xsettingsd \
+				"$XDG_DATA_HOME"/mime "$XDG_CONFIG_HOME"/mimeapps.list "$XDG_CONFIG_HOME"/dconf
 			shift
 			continue;;
 		-dbus) # and portals,,, experimental (BECAUSE PORTALS STILL SUCK)
-			executer --bind-try 'printf "%s\0" /tmp/dbus-* /run/dbus /etc/machine-id /etc/passwd $CONFIG/xdg-desktop-portal'
+			printf "%s\0" /tmp/dbus-* /run/dbus /etc/machine-id /etc/passwd "$XDG_CONFIG_HOME"/xdg-desktop-portal | appath --bind-try
 # 			databinder --ro-bind-data /.flatpak-info "[Application]
 # name=org.mozilla.firefox"
 			# export DBUS_SESSION_BUS_ADDRESS="unix:path=$XDG_RUNTIME_DIR/bus"
@@ -146,7 +180,7 @@ while true; do
 			set -- -share ipc "$@"
 			continue;;
 		-path)
-			executer --ro-bind-try 'echo "$PATH" | tr : "\0"'
+			printf %s "$PATH" | tr : "\0" | appath --ro-bind-try
 			shift
 			continue;;
 		-preset)
@@ -183,13 +217,12 @@ while true; do
 				[ -e "$arg" ] && {
 					dir=$(realpath -mLs "$arg")
 					[ -h "$dir" ] && {
-						sym=$(escapist "$dir")
-						args="$args --bind $sym $sym"
+						sym=$dir
+						appath --bind "$sym"
 						dir=$(readlink "$dir")
 					}
 					[ ! -d "$dir" ] && dir=$(dirname "$dir")
-					dir=$(escapist "$dir")
-					args="$args --bind $dir $dir"
+					appath --bind "$dir"
 					break
 				}
 				i=$((i - 1))
@@ -206,30 +239,15 @@ while true; do
 done
 
 # defaults
-[ "$interactive" ] || args="$args --unshare-user --new-session"
-[ "$reap" ] && args="$args --unshare-pid --die-with-parent"
-args="\
---ro-bind /usr/bin /usr/bin \
---ro-bind /usr/share /usr/share/ \
---ro-bind /usr/lib /usr/lib \
---ro-bind /usr/lib32 /usr/lib32 \
---symlink lib /usr/lib64 \
---symlink /usr/lib /lib64 \
---symlink /usr/lib /lib \
---symlink /usr/bin /bin \
---symlink /usr/bin /sbin \
---tmpfs /tmp \
---tmpfs /run \
---proc /proc \
---dev /dev \
-$args"
+[ "$interactive" ] || append --unshare-user --new-session
+[ "$reap" ] && append --unshare-pid --die-with-parent
 
 # If argv[] has "--", pass all previous args to bwrap
 i=0
 while true; do
 	[ $# -eq 1 ] && {
 		[ $i -gt 0 ] && {
-			eval set -- "$(tail -zn$i "$argfile" | escapist)" "$1"
+			eval set -- "$(tail -zn$i "$argfile" | escapist)" '"$1"'
 			tmp=$(mktemp)
 			head -zn-$i "$argfile" > "$tmp"
 			mv "$tmp" "$argfile"
@@ -243,40 +261,37 @@ while true; do
 	i=$((i + 1))
 done
 
-eval 'printf "%s\0" '"$args"' > '"$argfile"
-
 eval "$datasetup"
 trap - EXIT
 # start bwrap
-$(
-	if [ "$echo" ]; then
+$(if [ "$echo" ]; then
 		printf "echo2 "
-		rm "$argfile"
 	else
-		printf "eval "
-		printf "%s" '(cat '"$argfile"'; rm '"$argfile"') |'
+		printf "eval %s" '(cat '"$argfile"'; rm '"$argfile"') |'
 	fi
-) bwrap --args 0 "$(escapist "$@")" $reap
+) bwrap "$([ "$echo" ] && escapist <"$argfile" || echo --args 0)" "$(escapist "$@")" $reap
 
-[ "$echo" ] && exit
+[ "$echo" ] && { rm "$argfile"; exit; }
 [ "$reap" ] && {
 	pid=$!
 
-	killChildren()(
+	killchildren()(
 		export LIBPROC_HIDE_KERNEL=
 		export LC_ALL=C
 		log signal received
-		pidns=$(ps -ww -o pidns= --ppid "$1" | grep '[0-9]' | head -n1)
+		pidns=$(ps -ww -o pidns= --ppid "$2" | grep '[0-9]' | head -n1)
 		[ "$pidns" ] || {
 			log child already died
 			exit 1
 		}
 		list=$(ps -ww -e -o pidns=,pid= | grep '^\s*'"$pidns"'\s' | awk '{print $2}')
-		log killing $list &
-		kill -- $list
+		log kill -"$1"ing: $list &
+		kill -s "$1" -- $list
 	)
 
-	trap 'killChildren $pid' INT TERM HUP
+	trap 'killchildren 2 $pid' INT
+	trap 'killchildren 15 $pid' TERM
+	trap 'killchildren 9 $pid' HUP
 
 	while [ -d /proc/$pid ]; do
 		wait $pid
