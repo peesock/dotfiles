@@ -1,6 +1,6 @@
 #!/bin/sh
 # bwrap boilerplate. not meant to work everywhere, only work well enough to quickly sandbox my personal stuff.
-# todo: put args into file descriptor instead of cli
+# todo: finish putting args into argfile
 
 export XDG_CONFIG_HOME="${XDG_CONFIG_HOME-"$HOME/.config"}"
 export XDG_DATA_HOME="${XDG_DATA_HOME-"$HOME/.local/share"}"
@@ -29,22 +29,30 @@ escapist(){
 }
 
 executer(){
-	arg=$(eval "$2" | while read -r file; do
-		escapist "$1" "$file" "$file"
-	done)
-	args="$args $arg"
+	args="$args $(eval "$2" | sed -z 's/'\''/'\''\\'\'\''/g; s/\(.*\)/'\''\1'\''/g; s/\(.\+\)/'"$1"' \1 \1 /' | tr -d '\0')"
 }
 
-fd=3
+getfd(){
+	ls -1 /dev/fd | sed 's/.*\///' | sort -n | awk 'n<$1{exit}{n=$1+1}END{print n}'
+}
+
 databinder(){
 	# --file, --bind-data, --ro-bind-data, location, data
+	fd=$(getfd)
 	args="$args $1 $fd $2"
-	fdsetup="$fdsetup exec $fd<<EOF
-$3
+	datasetup="$datasetup exec $fd<<EOF
+\$3
 EOF
 "
-	fd=$((fd + 1))
 }
+
+argfile=$(mktemp)
+
+exiter(){
+	[ -f "$argfile" ] && rm "$argfile"
+	exit
+}
+trap exiter EXIT
 
 CONFIG=$XDG_CONFIG_HOME
 DATA=$XDG_DATA_HOME
@@ -105,12 +113,12 @@ while true; do
 			shift 4
 			continue;;
 		-net)
-			executer --ro-bind-try 'printf "/etc/%s\n" hostname hosts localtime nsswitch.conf resolv.conf ca-certificates ssl'
+			executer --ro-bind-try 'printf "/etc/%s\0" hostname hosts localtime nsswitch.conf resolv.conf ca-certificates ssl'
 			shift
 			set -- -share net "$@"
 			continue;;
 		-gpu)
-			executer --dev-bind-try 'find /dev -maxdepth 1 -name nvidia\*; printf "%s\n" /dev/dri /sys/dev/char /sys/devices/pci0*'
+			executer --dev-bind-try 'find /dev -maxdepth 1 -name nvidia\* -print0; printf "%s\0" /dev/dri /sys/dev/char /sys/devices/pci0*'
 			shift
 			continue;;
 		-cpu)
@@ -118,19 +126,19 @@ while true; do
 			shift
 			continue;;
 		-audio)
-			executer --ro-bind-try "find $RUNTIME -maxdepth 1 | grep '/pipewire\|/pulse'
-				printf '%s\n' /etc/alsa /etc/pipewire /etc/pulse ~/.asoundrc $CONFIG/pipewire $CONFIG/pulse"
+			executer --ro-bind-try "find $RUNTIME -maxdepth 1 -print0 | grep -z '/pipewire\|/pulse'
+				printf '%s\0' /etc/alsa /etc/pipewire /etc/pulse ~/.asoundrc $CONFIG/pipewire $CONFIG/pulse"
 			shift
 			continue;;
 		-theme)
-			executer --bind-try "printf '%s\n' /etc/fonts $CONFIG/fontconfig $DATA/fonts \
+			executer --bind-try "printf '%s\0' /etc/fonts $CONFIG/fontconfig $DATA/fonts \
 				$HOME/.icons $DATA/icons $CONFIG/Kvantum $CONFIG/qt[56]ct \
 				$HOME/.gtkrc-2.0 $CONFIG/gtk-[234].0 $CONFIG/xsettingsd $DATA/mime $CONFIG/mimeapps.list \
 				$CONFIG/dconf"
 			shift
 			continue;;
 		-dbus) # and portals,,, experimental (BECAUSE PORTALS STILL SUCK)
-			executer --bind-try 'printf "%s\n" /tmp/dbus-* /run/dbus /etc/machine-id /etc/passwd $CONFIG/xdg-desktop-portal'
+			executer --bind-try 'printf "%s\0" /tmp/dbus-* /run/dbus /etc/machine-id /etc/passwd $CONFIG/xdg-desktop-portal'
 # 			databinder --ro-bind-data /.flatpak-info "[Application]
 # name=org.mozilla.firefox"
 			# export DBUS_SESSION_BUS_ADDRESS="unix:path=$XDG_RUNTIME_DIR/bus"
@@ -138,7 +146,7 @@ while true; do
 			set -- -share ipc "$@"
 			continue;;
 		-path)
-			executer --ro-bind-try 'echo "$PATH" | tr : "\n"'
+			executer --ro-bind-try 'echo "$PATH" | tr : "\0"'
 			shift
 			continue;;
 		-preset)
@@ -200,18 +208,7 @@ done
 # defaults
 [ "$interactive" ] || args="$args --unshare-user --new-session"
 [ "$reap" ] && args="$args --unshare-pid --die-with-parent"
-
-args="$args $(escapist "$@")"
-
-eval "$fdsetup"
-$(
-	if [ "$echo" ]; then
-		printf "echo2 "; else
-		printf "eval "
-	fi
-	[ "$reap" ] ||
-		printf "exec "
-) bwrap \
+args="\
 --ro-bind /usr/bin /usr/bin \
 --ro-bind /usr/share /usr/share/ \
 --ro-bind /usr/lib /usr/lib \
@@ -225,7 +222,41 @@ $(
 --tmpfs /run \
 --proc /proc \
 --dev /dev \
-"$args" $reap
+$args"
+
+# If argv[] has "--", pass all previous args to bwrap
+i=0
+while true; do
+	[ $# -eq 1 ] && {
+		[ $i -gt 0 ] && {
+			eval set -- "$(tail -zn$i "$argfile" | escapist)" "$1"
+			tmp=$(mktemp)
+			head -zn-$i "$argfile" > "$tmp"
+			mv "$tmp" "$argfile"
+		}
+		break
+	}
+	[ "$1" = "--" ] && break
+
+	printf '%s\0' "$1" >> "$argfile"
+	shift
+	i=$((i + 1))
+done
+
+eval 'printf "%s\0" '"$args"' > '"$argfile"
+
+eval "$datasetup"
+trap - EXIT
+# start bwrap
+$(
+	if [ "$echo" ]; then
+		printf "echo2 "
+		rm "$argfile"
+	else
+		printf "eval "
+		printf "%s" '(cat '"$argfile"'; rm '"$argfile"') |'
+	fi
+) bwrap --args 0 "$(escapist "$@")" $reap
 
 [ "$echo" ] && exit
 [ "$reap" ] && {

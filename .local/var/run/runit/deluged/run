@@ -1,4 +1,4 @@
 #!/bin/sh
 sv check ../netCheck >/dev/null || exit 1
 
-exec bwrap.sh -noshare -net -exec --bind 'printf "$HOME/%s\n" download vids/tv music .config/deluge' deluged -d
+exec bwrap.sh -noshare -net -exec --bind 'printf "$HOME/%s\0" download vids/tv music .config/deluge' -- deluged -d
