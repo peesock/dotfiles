@@ -8,11 +8,10 @@
 # Using -interactive can allow arbitrary code execution if connected to
 # a terminal and lacking mitigations.
 # Using -noreap can allow programs to fork bomb you with no effective
-# means of death, unless you re-unshare pid namespace later on and
-# kill -9 the bwrap parent.
-# Without -noreap, sending $$ kill -INT and kill -TERM will send their
-# respective signals to all sandboxed children. Sending HUP will
-# KILL every child.
+# means of death, unless you --unshare-pid later on and kill -9 the
+# bwrap process responsible for setting the new namespace.
+# Without -noreap, sending $$ kill -INT or -TERM will send TERM to all
+# sandboxed children. Sending -HUP will kill -9 the entire namespace.
 # *All* of /bin, /lib, and /usr/share are made visible.
 
 export XDG_CONFIG_HOME="${XDG_CONFIG_HOME-"$HOME/.config"}"
@@ -276,21 +275,25 @@ $(if [ "$echo" ]; then
 	pid=$!
 
 	killchildren()(
-		export LIBPROC_HIDE_KERNEL=
-		export LC_ALL=C
-		log signal received
-		pidns=$(ps -ww -o pidns= --ppid "$2" | grep '[0-9]' | head -n1)
-		[ "$pidns" ] || {
-			log child already died
-			exit 1
-		}
-		list=$(ps -ww -e -o pidns=,pid= | grep '^\s*'"$pidns"'\s' | awk '{print $2}')
-		log kill -"$1"ing: $list &
-		kill -s "$1" -- $list
+	log signal $(($? - 128)) received
+		if [ "$1" = '9' ]; then
+			log kill -9ing: "$2"
+			kill -s 9 -- "$2"
+		else
+			export LIBPROC_HIDE_KERNEL=
+			export LC_ALL=C
+			pidns=$(ps -ww -o pidns= --ppid "$2" | grep '[0-9]' | head -n1)
+			[ "$pidns" ] || {
+				log child already died
+				exit 1
+			}
+			list=$(ps -ww -e -o pidns=,pid= | grep '^\s*'"$pidns"'\s' | awk '{print $2}')
+			log kill -"$1"ing: $list &
+			kill -s "$1" -- $list
+		fi
 	)
 
-	trap 'killchildren 2 $pid' INT
-	trap 'killchildren 15 $pid' TERM
+	trap 'killchildren 15 $pid' TERM INT
 	trap 'killchildren 9 $pid' HUP
 
 	while [ -d /proc/$pid ]; do
