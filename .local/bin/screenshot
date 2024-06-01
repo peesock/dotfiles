@@ -5,7 +5,7 @@ foto="$(date +%Y%m%d"-"%H%M%S"-""$(($(date +%N | sed "s/^0*//g; s/\.0*/./g") / 1
 
 if [ "$WAYLAND_DISPLAY" ]; then
 	clip(){
-		wl-copy -t "image/png" < "$out"
+		wl-copy -t "image/png" < "${1-$out}"
 	}
 	crop(){
 		slurp -b 00000000 -c ffffffff -w 1
@@ -19,7 +19,7 @@ if [ "$WAYLAND_DISPLAY" ]; then
 	}
 else
 	clip(){
-		xclip -t "image/png" -sel c "$out"
+		xclip -t "image/png" -sel c "${1-$out}"
 	}
 	crop(){
 		hacksaw -f "-i %i -g %g"
@@ -59,7 +59,7 @@ until [ $i -gt $# ]; do
 
 			basicrop "$recentPic" "$newPic" || exit 1
 			! [ -f "$newPic" ] && newPic="$recentPic" && overwritten=true
-			[ "$file" ] || xclip -t "image/png" -sel c "$newPic"
+			[ "$file" ] || clip "$newPic"
 			! [ "$overwritten" ] && [ "$temp" ] && rm "$newPic"
 			exit 0
 			;;
