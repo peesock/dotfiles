@@ -262,15 +262,21 @@ done
 
 eval "$datasetup"
 trap - EXIT
+
+fifo=$(mktemp -u)
+mkfifo "$fifo"
+(cat "$argfile" > "$fifo"; rm "$argfile" "$fifo") &
+fd=$(getfd)
+
 # start bwrap
 $(if [ "$echo" ]; then
 		printf "echo2 "
 	else
-		printf "eval %s" '(cat '"$argfile"'; rm '"$argfile"') |'
+		printf "eval "
 	fi
-) bwrap "$([ "$echo" ] && escapist <"$argfile" || echo --args 0)" "$(escapist "$@")" $reap
+) bwrap "$([ "$echo" ] && escapist <"$argfile" || echo --args $fd)" "$(escapist "$@")" "$fd<"'"$fifo"' $reap
 
-[ "$echo" ] && { rm "$argfile"; exit; }
+[ "$echo" ] && { rm "$argfile" "$fifo"; exit; }
 [ "$reap" ] && {
 	pid=$!
 
