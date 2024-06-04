@@ -1,17 +1,44 @@
 #!/bin/sh
-tmpPic="$(mktemp)"
-tmpTxt="$(mktemp)"
-eval "shotgun -f pam $(hacksaw -f '-i %i -g %g' || (notify-send "Cancelling" && (rm "$tmpPic" "$tmpTxt" ; kill 0))) '$tmpPic'"
+tmpPic=$(mktemp)
 
-zbarimg "$tmpPic" | cut -d: -f2- > "$tmpTxt"
-if [ -s "$tmpTxt" ]; then
-	xclip -sel clip "$tmpTxt" && notify-send "Grabbed barcode"
+trap 'rm "$tmpPic"' EXIT
+trap exit INT TERM
+
+if [ "$WAYLAND_DISPLAY" ]; then
+	screenshot(){
+		grim -t ppm -g "$crop" "$@"
+	}
+	crop(){
+		slurp -b 00000000 -c ffffffff -w 1
+	}
+	clip(){
+		wl-copy -- "$1"
+	}
 else
-	tesseract "$tmpPic" stdout --oem 1 -l eng+osd > "$tmpTxt"
-	if [ -s "$tmpTxt" ]; then
-		xclip -sel clip "$tmpTxt" && notify-send "Grabbed text"
+	screenshot(){
+		shotgun -f pam $crop "$@"
+	}
+	crop(){
+		hacksaw -f '-i %i -g %g'
+	}
+	clip(){
+		echo "$1" | xclip -sel c
+	}
+fi
+crop=$(crop) || {
+	notify-send "Cancelling"
+	exit
+}
+screenshot "$tmpPic"
+
+text=$(zbarimg -q "$tmpPic" | cut -d: -f2-)
+if [ "$text" ]; then
+	clip "$text" && notify-send "Grabbed barcode"
+else
+	text=$(tesseract "$tmpPic" stdout --oem 1 -l eng+osd)
+	if [ "$text" ]; then
+		clip "$text" && notify-send "Grabbed text"
 	else
 		notify-send "Nothing detected"
 	fi
 fi
-rm "$tmpPic" "$tmpTxt"
