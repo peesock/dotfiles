@@ -13,3 +13,5 @@ export QT_QPA_PLATFORMTHEME=qt5ct
 export GTK_THEME='Dracula'
 export GOPATH="$HOME/.local/share/go/"
 export MPD_HOST="$HOME/.local/share/mpd/socket"
+[ "$DBUS_SESSION_BUS_ADDRESS" ] ||
+	eval " $(dbus-launch --sh-syntax)"

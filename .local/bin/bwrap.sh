@@ -19,26 +19,18 @@ export XDG_DATA_HOME="${XDG_DATA_HOME-"$HOME/.local/share"}"
 export XDG_RUNTIME_DIR="${XDG_RUNTIME_DIR-"/run/user/$(id -u)"}"
 export WINEPREFIX="${WINEPREFIX-"$HOME/.wine"}"
 
-echo2(){
-	var=$(printf '%s ' "$@")
-	printf '%s\n' "${var%?}"
-	var=
-}
-
 programName=$(basename "$0")
 log(){
 	echo2 "$programName:" "$@"
 }
 
 escapist(){
-	tr="tr '\0' ' '"
 	if [ $# -eq 0 ]; then
 		print="cat"
 	else
 		print='printf "%s\0" "$@"'
-		[ $# -eq 1 ] && tr="tr -d '\0'"
 	fi
-	eval "$print" | sed -z 's/'\''/'\''\\'\'\''/g; s/\(.*\)/'\''\1'\''/g' | eval "$tr"
+	eval "$print" | sed -z 's/'\''/'\''\\'\'\''/g; s/\(.*\)/'\''\1'\''/g' | tr '\0' ' '
 }
 
 getfd(){
@@ -67,6 +59,7 @@ trap exiter EXIT
 append(){
 	printf "%s\0" "$@" >> "$argfile"
 }
+
 appath(){
 	opt=$1
 	shift
@@ -171,7 +164,13 @@ while true; do
 			shift
 			continue;;
 		-dbus) # and portals,,, experimental (BECAUSE PORTALS STILL SUCK)
-			printf "%s\0" /tmp/dbus-* /run/dbus /etc/machine-id /etc/passwd "$XDG_CONFIG_HOME"/xdg-desktop-portal | appath --bind-try
+			appath --bind-try /run/dbus /etc/machine-id /etc/passwd "$XDG_CONFIG_HOME"/xdg-desktop-portal
+			if [ "$DBUS_SESSION_BUS_ADDRESS" ]; then
+				appath --bind-try $(echo "$DBUS_SESSION_BUS_ADDRESS" | cut -d= -f2 | cut -d, -f1)
+			else
+				[ "$DISPLAY" ] &&
+					appath --bind-try "$(grep '^DBUS_SESSION_BUS_ADDRESS=' ~/.dbus/session-bus/"$(cat /etc/machine-id)"-"$(echo "$DISPLAY" | cut -d: -f2 | cut -d. -f1)" | cut -d= -f3 | cut -d, -f1 | cut -d\' -f1)"
+			fi
 # 			databinder --ro-bind-data /.flatpak-info "[Application]
 # name=org.mozilla.firefox"
 			# export DBUS_SESSION_BUS_ADDRESS="unix:path=$XDG_RUNTIME_DIR/bus"
@@ -263,20 +262,19 @@ done
 eval "$datasetup"
 trap - EXIT
 
-fifo=$(mktemp -u)
-mkfifo "$fifo"
-(cat "$argfile" > "$fifo"; rm "$argfile" "$fifo") &
-fd=$(getfd)
-
 # start bwrap
-$(if [ "$echo" ]; then
-		printf "echo2 "
-	else
-		printf "eval "
-	fi
-) bwrap "$([ "$echo" ] && escapist <"$argfile" || echo --args $fd)" "$(escapist "$@")" "$fd<"'"$fifo"' $reap
+if [ "$echo" ]; then
+	printf 'bwrap %s\n' "$(printf '%s\0' "$@" | cat "$argfile" - | escapist)"
+else
+	fifo=$(mktemp -u)
+	mkfifo "$fifo"
+	(cat "$argfile" > "$fifo"; rm "$argfile" "$fifo") &
+	fd=$(getfd)
 
-[ "$echo" ] && { rm "$argfile" "$fifo"; exit; }
+	eval bwrap --args "$fd" "$(escapist "$@")$fd<" '"$fifo"' $reap
+fi
+
+[ "$echo" ] && { rm "$argfile"; exit; }
 [ "$reap" ] && {
 	pid=$!
 
