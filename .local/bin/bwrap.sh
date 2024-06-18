@@ -21,7 +21,7 @@ export WINEPREFIX="${WINEPREFIX-"$HOME/.wine"}"
 
 programName=$(basename "$0")
 log(){
-	echo2 "$programName:" "$@"
+	echo "$programName:" "$@"
 }
 
 escapist(){
@@ -241,6 +241,7 @@ done
 [ "$reap" ] && append --unshare-pid --die-with-parent
 
 # If argv[] has "--", pass all previous args to bwrap
+# For security and like 4ms of saved time, use "--"
 i=0
 while true; do
 	[ $# -eq 1 ] && {
@@ -254,7 +255,7 @@ while true; do
 	}
 	[ "$1" = "--" ] && break
 
-	printf '%s\0' "$1" >> "$argfile"
+	append "$1"
 	shift
 	i=$((i + 1))
 done
@@ -274,7 +275,7 @@ else
 	eval bwrap --args "$fd" "$(escapist "$@")$fd<" '"$fifo"' $reap
 fi
 
-[ "$echo" ] && { rm "$argfile"; exit; }
+[ "$echo" ] && exiter
 [ "$reap" ] && {
 	pid=$!
 
