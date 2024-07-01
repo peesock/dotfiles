@@ -1,24 +1,25 @@
 # apock
-screen locker wrapper.
+screen locker wrapper for Xorg
 
 dependencies:
 - alock - https://github.com/arkq/alock
-- xss-lock
+- xset
 
-fancy dependencies:
+extra dependencies:
+- xwininfo
 - $TERMINAL / alacritty by default
 - cli-visualizer
-- xscreensaver screensavers, ie everything in `/usr/lib/xscreensaver`
+- xscreensaver library, IE everything in `/usr/lib/xscreensaver`
 
 ## usage
 use `apock` to lock from cli
-use `apock xss` and `apock warn` with xss-lock, like
+use `apock warn` with xss-lock, like
 ```
-xss-lock -n 'apock warn' -- apock xss'
+xss-lock -n 'apock warn' -- apock
 ```
 specify a screensaver function:
 ```
-xss-lock -n 'apock warn' -- apock xss visualizer &
+xss-lock -n 'apock warn' -- apock visualizer &
 ...
 apock xscreensaver
 ```
@@ -29,41 +30,43 @@ image cropping script.
 
 dependencies:
 - feh
-- hacksaw
+- hacksaw/grim
 - sxhkd
 - graphicsmagick
 - bc
 
 hacksaw and graphicsmagick are easily replacable by slop and imagemagick.
 
+despite using an X hotkey daemon, it does actually work through Xwayland because the image viewer feh is also xwayland, so pressing keys on the feh window will also be registered by sxhkd.
+
 ## usage
 `basicrop infile outfile` if outfile isn't specified, infile will always be overwritten.
 - 'c' to crop
 - 'u' to undo
 - 'A' to toggle anti-aliasing
-- 'Escape' or 'q' to quit
+- 'Esc' or 'q' to quit
 - 'Return' to save file
-- 'shift' + 'Return' to overwrite file
+- 'Shift' + 'Return' to overwrite file
 
 because there's no way to communicate the image's location to the script, you cannot zoom in or translate.
 
 ### how
-`basicrop input output` will open `input` in fullscreen mode. this way, your screen dimensions act as a ruler, and we know where to crop based on hacksaw output.
+`basicrop input output` will open `input` in fullscreen mode. this way, your screen dimensions act as a ruler, and we know where to crop based on hacksaw output and image dimensions.
 
 sxhkd is how we take keyboard input, which sucks, but i don't care.
 
 
-# browser-sync
-moves firefox profile to memory for speed and disk life.
+# memory-sync
+mostly for moving firefox's profile to memory for speed and hard disk life.
 
 ## usage
-`browser-sync [-d] [-e] browser-name browser-binary profile-dir`
-- -d - runs it as a daemon, constantly syncing
-- -e - as a daemon, exit when browser-binary exits
+`memory-sync [options] uniqueName dirToCopy [ [-p $pid | binary] | [ram | disk | auto] ]`
+the flags are confusing -- i might rewrite argument handling later.
+the script has comments to explain all flags.
 
-`browser-sync ff-dev firefox ~/.mozilla/firefox` will sync firefox profile to ram one time.
+`memory-sync firefox ~/.mozilla/firefox` will sync firefox profile to either ram or to disk, depending on whether it's already been synced to ram.
 
-`browser-sync -d -e ff-dev firefox ~/.mozilla/firefox` will sync firefox profile to ram once every 30 minutes, and then sync and exit on firefox exit.
+`memory-sync -D -e -u 30m firefox ~/.mozilla/firefox "firefox"` will sync firefox profile to ram once every 30 minutes, and then sync and exit on firefox exit.
 
 
 
@@ -122,27 +125,25 @@ Also see my ~/.zshrc to add git autocomplete.
 
 
 # maptoggle.sh
-toggles an X window between mapped and unmapped, ie, visible/invisible, using custom window properties to distinguish windows. Uses xdotool and xprop.
+toggles an X window between mapped and unmapped, ie, visible/invisible (not minimized). Uses xwininfo and xdotool.
 
 ## usage
-`maptoggle.sh ID "command args..." [options]`
+`maptoggle.sh [ID | command] [command] [options]`
 
-`ID` is added to a new X window property (named with `$0`), which can be found with xprop.
+`ID` identifies a specific window to look for
 
 `command` is only used to start the program, and does not need to be included in future runs of this tool, if the window isn't killed.
 
-`-echo` will echo the window id to stdout when making the window visible, for use in scripts like when enabling persistent floating state or window sizes.
-
-return code 2 means the program was just started for the first time.
+`-echo` will echo the window id to stdout when mapping the window, for use in scripts to enable persistent floating state or window geometry.
 
 ## examples
-most window properties are in the EWMH spec that your WM most likely supports. for these, you can use wmctrl to control them. some properties, like floating/tiling status, are not in the spec, and depend on your specific window manager. for awesomeWM:
+EWMH-compliant window managers (almost all of them) will let you change window geometry after mapping. some properties, like floating/tiling status, are not in the spec, and depend on your specific window manager. for awesomeWM:
 ```sh
 winid=$(maptoggle.sh "magic id" $TERMINAL -echo)
 awesome-client "local c = nil ; for _, c2 in ipairs(client.get()) do ; if c2.window == $winid then ; c = c2 ; break ; end ; end ; if not c then return end ; c.floating = true"
 ```
 
-fullscreen in any EWMH window manager:
+fullscreen:
 ```sh
 winid=$(maptoggle.sh "magic id" $TERMINAL -echo); wmctrl -ir $winid -b add,fullscreen
 ```
@@ -152,7 +153,7 @@ place a 50% x 50% sized window in the middle of the screen:
 winid=$(maptoggle.sh "magic id" $TERMINAL -echo); xdotool windowmove $winid 25% 25% ; xdotool windowsize $winid 50% 50%
 ```
 
-example of an awesomewm music player toggle:
+awesomewm music player toggle:
 ```sh
 wid=$(maptoggle.sh "musically" "$TERMINAL -e ncmpcpp" -echo)
 [ -n $wid ] &&
@@ -165,7 +166,7 @@ unset wid
 
 
 # name
-utility for naming files.
+utility for naming files, that i need to rewrite in C
 
 ## usage
 `name [-d DELIM] FUNCTION [ARG] [FILENAME]...`
@@ -196,8 +197,8 @@ small desktop barcode and text grabber
 dependencies:
 - zbar
 - tesseract (and the lang models you want)
-- hacksaw
-- shotgun
+- hacksaw/slurp
+- shotgun/grim
 
 crops a section of the screen, notifies if a barcode, text, or nothing was captured, and sends to clipboard.
 
@@ -207,16 +208,12 @@ crops a section of the screen, notifies if a barcode, text, or nothing was captu
 Xorg screenshot script
 
 dependencies:
-- shotgun
-- hacksaw
-- xclip
+- shotgun/grim
+- hacksaw/slurp
 - basicrop - optional, for cropping
 
-shotgun and hacksaw could be replaced with maim and slop.
-replacing the editor is harder, but it's just a shell script.
-
 ## usage
-first set `$fotoDir` in the script to a default dir for your screenshots.
+set `$fotoDir` in the script to a default dir for your screenshots.
 ```
 Usage: screenshot [options]
 
@@ -243,3 +240,23 @@ take a full screenshot to /tmp:
 
 edit:
 `screenshot edit` to save in `$fotoDir`, or `screenshot temp edit` to keep the result in /tmp
+
+
+
+# volume
+volume ctrl util for alsa and pulse/pipewire
+
+dependencies:
+- amixer
+- pactl
+
+## usage
+`volume [a | p] [vol | mute] [Direction Num] [Name] [Card]`
+
+## examples
+decrease soundcard volume by 5%:
+`volume a vol - 5 Master hw:PCH`
+increase pulseaudio "Global" device volume by 5%:
+`volume p vol + 5 Global`
+toggle mute "Global":
+`volume p mute Global`

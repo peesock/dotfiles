@@ -1,4 +1,4 @@
-#!/bin/sh -x
+#!/bin/sh
 set -u
 
 [ $# -lt 2 ] && exit 1
