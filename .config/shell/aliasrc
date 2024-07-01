@@ -56,9 +56,7 @@ alias \
 	z="zathura"
 
 #special aliases
-alias \
-	which rlwrap >/dev/null && alias \
-	dash="rlwrap dash"
+	command -v rlwrap >/dev/null && alias dash="rlwrap dash"
 
 	alias \
 	lf='lfpp' \

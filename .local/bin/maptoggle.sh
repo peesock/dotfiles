@@ -1,45 +1,11 @@
 #!/bin/sh
-# note: allow tagging existing windows
-# noter: the stupid X atom tagging method is unnecessary
 
-uid="$(echo "$1" | tr -d ',')"
-exe="$2"
+id=$1
+exe=${2-"$1"}
 
-scriptname="$(basename "$0")"
-path="/tmp/$USER/$scriptname/"
+programName="$(basename "$0")"
+path="/tmp/$USER/$programName"
 mkdir -p "$path"
-
-usage(){
-	printf "\nUsage:\n"
-	echo "\$1 - ID"
-	echo "\$2 - Program"
-	echo "-echo - Return window ID on visible"
-	exit "${1-0}"
-}
-
-echo_winid(){
-	[ $echo ] && echo "$winid"
-}
-
-execute(){
-	[ $# -lt 2 ] && usage 1
-	sed -i.bak "/^$uid,/d" "$path/processes"
-
-	# instead of `commadn $exe & pid=$!`, fork the process to ensure the script
-	# exits, and use a file to grab stdout independently of its process.
-	tmp=$(mktemp)
-	setsid -f sh -c "command $exe & echo \$!" > "$tmp"
-	pid=$(cat "$tmp")
-	rm "$tmp"
-
-	state=1
-	xdotool search --sync --pid "$pid" >/dev/null; sleep 0.2 #workaround a funny segfault
-	winid="$(xdotool search --sync --pid "$pid")"
-	xprop -f "_$scriptname" 8s -set "_$scriptname" "$uid" -id $winid
-	echo "$uid,$winid,$state" >> "$path/processes"
-	echo_winid
-	exit
-}
 
 i=1
 while [ $i -le $# ]; do
@@ -52,18 +18,44 @@ while [ $i -le $# ]; do
 	i=$((i + 1))
 done
 
-if line=$(grep -Fm 1 "$uid," "$path/processes"); then
-	winid=$(echo "$line" | cut -d',' -f2)
-	xprop -id "$winid" 2>/dev/null | grep "^_$scriptname.*$uid" >/dev/null || execute "$@"
-	state=$(echo "$line" | cut -d',' -f3)
-	if [ $state -eq 0 ]; then
-		xdotool windowmap "$winid"
-		sed -i.bak "/^$uid,/c\\$uid,$winid,1" "$path/processes"
-		echo_winid
-	else
+usage(){
+	cat <<- EOF
+	Usage:
+	\$1 - ID
+	\$2 - Program
+	-echo - Return window ID on visible
+	EOF
+	exit "${1-0}"
+}
+
+echo_winid(){
+	[ "$echo" ] && echo "$winid"
+}
+
+execute(){
+	sh -c "exec $exe" >/dev/null & pid=$!
+
+	# xdotool search --sync --pid "$pid" >/dev/null; sleep 0.2 #workaround a funny segfault
+	winid="$(xdotool search --sync --pid "$pid")"
+	# xprop -f "_$programName" 8s -set "_$programName" "$id" -id $winid
+	printf "%s\n" "$winid" "$pid" > "$path/$id"
+	echo_winid
+	(waitpid $pid; rm "$path/$id") >/dev/null &
+}
+
+[ -f "$path/$id" ] && {
+	winid=$(sed -n 1p "$path/$id")
+	state=$(xwininfo -id "$winid" | grep -F "Map State" | awk '{print $3}')
+}
+if [ "$state" ]; then
+	# xprop -id "$winid" 2>/dev/null | grep "^_$programName.*$id" >/dev/null || execute "$@"
+	if [ "$state" = IsViewable ]; then
 		xdotool windowunmap --sync "$winid"
-		sed -i.bak "/^$uid,/c\\$uid,$winid,0" "$path/processes"
+	else
+		xdotool windowmap "$winid"
+		echo_winid
 	fi
 else
-	execute "$@"
+	execute
+	exit
 fi

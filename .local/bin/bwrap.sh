@@ -208,28 +208,7 @@ while true; do
 		-autobind)
 			# Walk back from argv[] and detect the first argument that exists as a
 			# path, then bind either that or its parent dir
-			i=$#
-			unset dir sym
-			while [ $i -gt 1 ]; do
-				eval arg=\$$i
-				[ -e "$arg" ] && {
-					dir=$(realpath -mLs "$arg")
-					[ -h "$dir" ] && {
-						sym=$dir
-						appath --bind "$sym"
-						dir=$(readlink "$dir")
-					}
-					[ ! -d "$dir" ] && dir=$(dirname "$dir")
-					appath --bind "$dir"
-					break
-				}
-				i=$((i - 1))
-			done
-			if [ "$dir" ]; then
-				log autobound "$dir" "$sym"
-			else
-				log autobound nothing
-			fi
+			autobind=true
 			shift
 			continue;;
 	esac
@@ -239,6 +218,31 @@ done
 # defaults
 [ "$interactive" ] || append --unshare-user --new-session
 [ "$reap" ] && append --unshare-pid --die-with-parent
+
+[ "$autobind" ] && {
+	i=$#
+	unset dir sym
+	while [ $i -gt 1 ]; do
+		eval arg=\$$i
+		[ -e "$arg" ] && {
+			dir=$(realpath -mLs "$arg")
+			[ -h "$dir" ] && {
+				sym=$dir
+				appath --bind "$sym"
+				dir=$(readlink "$dir")
+			}
+			[ ! -d "$dir" ] && dir=$(dirname "$dir")
+			appath --bind "$dir"
+			break
+		}
+		i=$((i - 1))
+	done
+	if [ "$dir" ]; then
+		log autobound "$dir" "$sym"
+	else
+		log autobound nothing
+	fi
+}
 
 # If argv[] has "--", pass all previous args to bwrap
 # For security and like 4ms of saved time, use "--"

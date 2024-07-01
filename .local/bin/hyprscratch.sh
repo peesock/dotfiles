@@ -24,7 +24,7 @@ while true; do
 	break
 done
 id=$1
-[ $# -eq 1 ] && program=$id || program=$2
+program=${2-"$1"}
 
 programName=$(basename "$0")
 path=/tmp/$USER/$programName

@@ -1,6 +1,8 @@
 #!/bin/sh
 # startup services for display sessions
 
+dbus-update-activation-environment --all
+
 xrdb ${XDG_CONFIG_HOME:-$HOME/.config}/x11/xresources & xrdbpid=$!	# use Xresources colors/settings on startup
 
 setbg --stretch & # set background
@@ -10,10 +12,9 @@ xorg.sh # fixes keyboard assshittery
 xsetroot -cursor_name left_ptr # ensures correct cursor on X root window
 unclutter --ignore-scrolling --start-hidden &
 
-# sxhkd &
-# picom &
-# dunst &
-opensnitch-ui --background &
+sxhkd &
+picom &
+opensnitch-ui &
 
 # Ensure that xrdb has finished running before moving on to start the WM/DE.
 [ -n "$xrdbpid" ] && wait "$xrdbpid"
