@@ -32,11 +32,24 @@ echo_winid(){
 	[ "$echo" ] && echo "$winid"
 }
 
-execute(){
-	sh -c "exec $exe" >/dev/null & pid=$!
+wait_winid(){
+	[ "$1" = fetch ] && {
+		xwininfo -root -tree | wc -l
+		return
+	}
+	wc=$1
+	wc2=$((wc + 4)) # this might be horribly broken!
+	until [ "$wc" -ge "$wc2" ]; do
+		wc=$(xwininfo -root -tree | wc -l)
+		sleep 0.05
+	done
+	xdotool search --sync --pid "$2"
+}
 
-	# xdotool search --sync --pid "$pid" >/dev/null; sleep 0.2 #workaround a funny segfault
-	winid="$(xdotool search --sync --pid "$pid")"
+execute(){
+	wc=$(wait_winid fetch)
+	sh -c "exec $exe" >/dev/null & pid=$!
+	winid="$(wait_winid "$wc" "$pid")"
 	# xprop -f "_$programName" 8s -set "_$programName" "$id" -id $winid
 	printf "%s\n" "$winid" "$pid" > "$path/$id"
 	echo_winid
