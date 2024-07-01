@@ -29,43 +29,41 @@ usage(){
 }
 
 echo_winid(){
-	[ "$echo" ] && echo "$winid"
+	[ "$echo" ] && echo "$wid"
 }
 
-wait_winid(){
-	[ "$1" = fetch ] && {
-		xwininfo -root -tree | wc -l
-		return
-	}
-	wc=$1
-	wc2=$((wc + 4)) # this might be horribly broken!
-	until [ "$wc" -ge "$wc2" ]; do
-		wc=$(xwininfo -root -tree | wc -l)
+exec_winid(){
+	# sets global vars $wid and $pid (and $tmp)
+	tmp=$(mktemp)
+	xwininfo -root -tree | grep '^\s*0x[0-9]\+' | grep -v '\s\+1x1+0+0\s\++0+0' | awk '{print $1}' | sort > "$tmp"
+	"$@" >&2 & pid=$!
+	while true; do
+		for wid in $(xwininfo -root -tree | grep '^\s*0x[0-9]\+' | grep -v '\s\+1x1+0+0\s\++0+0' | awk '{print $1}' | sort | comm --nocheck-order -13 "$tmp" -); do
+			xwininfo -id "$wid" | grep -qF 'Map State: IsViewable' && break 2
+		done
 		sleep 0.05
 	done
-	xdotool search --sync --pid "$2"
+	rm "$tmp"
 }
 
 execute(){
-	wc=$(wait_winid fetch)
-	sh -c "exec $exe" >/dev/null & pid=$!
-	winid="$(wait_winid "$wc" "$pid")"
+	exec_winid sh -c "exec $exe"
 	# xprop -f "_$programName" 8s -set "_$programName" "$id" -id $winid
-	printf "%s\n" "$winid" "$pid" > "$path/$id"
+	printf "%s\n" "$wid" "$pid" > "$path/$id"
 	echo_winid
 	(waitpid $pid; rm "$path/$id") >/dev/null &
 }
 
 [ -f "$path/$id" ] && {
-	winid=$(sed -n 1p "$path/$id")
-	state=$(xwininfo -id "$winid" | grep -F "Map State" | awk '{print $3}')
+	wid=$(sed -n 1p "$path/$id")
+	state=$(xwininfo -id "$wid" | grep -F "Map State" | awk '{print $3}')
 }
 if [ "$state" ]; then
 	# xprop -id "$winid" 2>/dev/null | grep "^_$programName.*$id" >/dev/null || execute "$@"
 	if [ "$state" = IsViewable ]; then
-		xdotool windowunmap --sync "$winid"
+		xdotool windowunmap --sync "$wid"
 	else
-		xdotool windowmap "$winid"
+		xdotool windowmap "$wid"
 		echo_winid
 	fi
 else

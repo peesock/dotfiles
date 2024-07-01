@@ -3,6 +3,8 @@
 programName=$(basename "$0")
 tmpDir="/tmp/$USER/$programName/$DISPLAY"
 lockFile=$tmpDir/lock
+cycle=$(xset q | awk '/cycle/{print $4}')
+timeout=$(xset q | awk '/cycle/{print $2}')
 
 mkdir -p "$tmpDir"
 
@@ -10,13 +12,12 @@ mkdir -p "$tmpDir"
 if [ "$1" = "warn" ]; then
 	trap 'exit' TERM INT
 	[ -e "$lockFile" ] || {
-		i=$(xset q | awk '/cycle/{print $4}')
-		while [ $i -gt 0 ]; do
+		while [ "$cycle" -gt 0 ]; do
 			t=2000
-			[ $i -eq 1 ] && t=500 # prevents dunst from displaying this when waking up
-			notify-send -r 13 -t $t "Locking" "$i\s"
+			[ "$cycle" -eq 1 ] && t=500 # prevents dunst from displaying this when waking up
+			notify-send -r 13 -t $t "Locking" "$cycle\s"
 			sleep 1
-			i=$((i - 1))
+			cycle=$((cycle - 1))
 		done
 	}
 	sleep 2147483647 &
@@ -25,11 +26,7 @@ if [ "$1" = "warn" ]; then
 	exit
 fi
 
-[ "$1" = "xss" ] && {
-	xss=true; shift
-}
-
-[ -e "$lockFile" ] && [ "$xss" ] && {
+[ -e "$lockFile" ] && {
 	echo "already locked. hanging until exit"
 	command -v inotifywait >/dev/null && {
 		inotifywait -e delete_self "$lockFile" && exit
@@ -43,28 +40,31 @@ fi
 
 # basic lock command
 lock(){
-	alock -a passwd "$@"
+	alock "$@"
 }
 
 pre(){
-	date
 	# lock-essential functions
 	find "$tmpDir" -type f -print0 | xargs -0 rm 2>/dev/null
+	touch "$lockFile"
+	xset s off
 
 	# user-defined functions
+	printf 'locking at:     '; date
 	# kill secret services
 	passwords -k -K -q 2>/dev/null &
 	dunstctl set-paused true
-	touch "$lockFile"
 }
 
 post(){
 	# lock-essential functions
 	kill $(cat "$tmpDir"/* 2>/dev/null) 2>/dev/null
+	rm "$lockFile"
+	xset s "$timeout" "$cycle"
 
 	# user-defined functions
+	printf 'unlocking at:   '; date
 	dunstctl set-paused false
-	rm "$lockFile"
 }
 trap exit TERM INT
 trap post EXIT
@@ -77,6 +77,7 @@ fallback(){
 		eval "$(basename "$f")='$(cat "$f")'"
 	done
 	waitpid $coverPID; [ -d "/proc/$lockPID" ] && (
+		echo "Cover failed. Used fallback" >&2
 		notify-send -u critical "Lock screen" "Cover failed. Used fallback" &
 		kill $funcPID
 		kill $lockPID
@@ -90,13 +91,19 @@ setfull()(
 	done
 )
 
-getwid()(
-	unset wid
-	until [ "$wid" ]; do
-		wid=$(xdotool search --pid $1)
+exec_winid(){
+	# sets global vars $wid and $pid (and $tmp)
+	tmp=$(mktemp)
+	xwininfo -root -tree | grep '^\s*0x[0-9]\+' | grep -v '\s\+1x1+0+0\s\++0+0' | awk '{print $1}' | sort > "$tmp"
+	"$@" >&2 & pid=$!
+	while true; do
+		for wid in $(xwininfo -root -tree | grep '^\s*0x[0-9]\+' | grep -v '\s\+1x1+0+0\s\++0+0' | awk '{print $1}' | sort | comm --nocheck-order -13 "$tmp" -); do
+			xwininfo -id "$wid" | grep -qF 'Map State: IsViewable' && break 2
+		done
+		sleep 0.05
 	done
-	echo "$wid"
-)
+	rm "$tmp"
+}
 
 # set up visualizer
 visualizer()(
@@ -134,28 +141,19 @@ visualizer()(
 	kill -s STOP $pidList 2>/dev/null
 
 	if command -v alacritty >/dev/null; then
-		alacritty -o 'colors.primary.background="#000000"' -o 'window.opacity=1' -e vis & coverPID=$!
+		exec_winid alacritty -o 'colors.primary.background="#000000"' -o 'window.opacity=1' -e vis
 	else
-		xterm -bg '#000000' -fullscreen -e env TERM=xterm-256color vis & coverPID=$!
+		exec_winid xterm -bg '#000000' -fullscreen -e env TERM=xterm-256color vis
 	fi
-	setfull "$(getwid $coverPID)"
+	coverPID=$pid
+	setfull "$wid"
 	echo $coverPID > "$tmpDir/coverPID"
 
 	wait "$lockPID"
 	kill -s CONT $pidList 2>/dev/null
 )
 
-windowwatcher()(
-	tmp=$(mktemp)
-	xdotool search "$1" "$2" | sort > "$tmp"
-	until [ "$out" ]; do
-		out=$(xdotool search "$1" "$2" | sort | comm --nocheck-order -13 "$tmp" -)
-	done
-	echo "$out" | head -n1
-	rm "$tmp"
-)
-
-xscreensaver(){
+xscreensaver()(
 	eval 'set -- '$(getopt -o 't:c' -- "$@")
 	t=2m
 	unset exe
@@ -178,8 +176,9 @@ xscreensaver(){
 	done
 	[ "$1" ] && exe=/usr/lib/xscreensaver/$1
 
-	lock & lockPID=$!
-	lockWID=$(windowwatcher --name "")
+	exec_winid lock
+	lockPID=$pid
+	lockWID=$wid
 	echo $lockPID | tee "$tmpDir/coverPID" "$tmpDir/lockPID" >/dev/null
 	export XSCREENSAVER_WINDOW="$lockWID"
 
@@ -201,8 +200,8 @@ xscreensaver(){
 	done &
 	echo $! > "$tmpDir/$!"
 
-	wait "$lockPID"
-}
+	waitpid "$lockPID"
+)
 
 # main
 pre
