@@ -36,7 +36,7 @@ exec_winid(){
 	# sets global vars $wid and $pid (and $tmp)
 	tmp=$(mktemp)
 	xwininfo -root -tree | grep '^\s*0x[0-9]\+' | grep -v '\s\+1x1+0+0\s\++0+0' | awk '{print $1}' | sort > "$tmp"
-	"$@" >&2 & pid=$!
+	"$@" & pid=$!
 	while true; do
 		for wid in $(xwininfo -root -tree | grep '^\s*0x[0-9]\+' | grep -v '\s\+1x1+0+0\s\++0+0' | awk '{print $1}' | sort | comm --nocheck-order -13 "$tmp" -); do
 			xwininfo -id "$wid" | grep -qF 'Map State: IsViewable' && break 2
@@ -44,7 +44,7 @@ exec_winid(){
 		sleep 0.05
 	done
 	rm "$tmp"
-}
+} >&2
 
 execute(){
 	exec_winid sh -c "exec $exe"

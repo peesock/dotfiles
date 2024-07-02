@@ -76,8 +76,8 @@ fallback(){
 	for f in "$tmpDir"/*PID ; do
 		eval "$(basename "$f")='$(cat "$f")'"
 	done
-	waitpid $coverPID; [ -d "/proc/$lockPID" ] && (
-		echo "Cover failed. Used fallback" >&2
+	waitpid $coverPID; ps -p $lockPID >/dev/null && (
+		echo "Cover failed. Used fallback"
 		notify-send -u critical "Lock screen" "Cover failed. Used fallback" &
 		kill $funcPID
 		kill $lockPID
@@ -95,7 +95,7 @@ exec_winid(){
 	# sets global vars $wid and $pid (and $tmp)
 	tmp=$(mktemp)
 	xwininfo -root -tree | grep '^\s*0x[0-9]\+' | grep -v '\s\+1x1+0+0\s\++0+0' | awk '{print $1}' | sort > "$tmp"
-	"$@" >&2 & pid=$!
+	"$@" & pid=$!
 	while true; do
 		for wid in $(xwininfo -root -tree | grep '^\s*0x[0-9]\+' | grep -v '\s\+1x1+0+0\s\++0+0' | awk '{print $1}' | sort | comm --nocheck-order -13 "$tmp" -); do
 			xwininfo -id "$wid" | grep -qF 'Map State: IsViewable' && break 2
@@ -103,7 +103,7 @@ exec_winid(){
 		sleep 0.05
 	done
 	rm "$tmp"
-}
+} >&2
 
 # set up visualizer
 visualizer()(
@@ -178,9 +178,8 @@ xscreensaver()(
 
 	exec_winid lock
 	lockPID=$pid
-	lockWID=$wid
 	echo $lockPID | tee "$tmpDir/coverPID" "$tmpDir/lockPID" >/dev/null
-	export XSCREENSAVER_WINDOW="$lockWID"
+	export XSCREENSAVER_WINDOW="$wid"
 
 	while true; do
 		unset exePID
@@ -196,7 +195,7 @@ xscreensaver()(
 			(sleep "$t" && kill -9 $exePID) & echo $! > "$tmpDir/$!"
 		}
 		waitpid "$exePID"
-		[ -d "/proc/$lockPID" ] || break
+		ps -p "$lockPID" >/dev/null || break
 	done &
 	echo $! > "$tmpDir/$!"
 
