@@ -37,12 +37,14 @@ exec_winid(){
 	tmp=$(mktemp)
 	xwininfo -root -tree | grep '^\s*0x[0-9]\+' | grep -v '\s\+1x1+0+0\s\++0+0' | awk '{print $1}' | sort > "$tmp"
 	"$@" & pid=$!
+	(waitpid $pid; kill $$) &
 	while true; do
 		for wid in $(xwininfo -root -tree | grep '^\s*0x[0-9]\+' | grep -v '\s\+1x1+0+0\s\++0+0' | awk '{print $1}' | sort | comm --nocheck-order -13 "$tmp" -); do
 			xwininfo -id "$wid" | grep -qF 'Map State: IsViewable' && break 2
 		done
 		sleep 0.05
 	done
+	kill $!
 	rm "$tmp"
 } >&2
 
