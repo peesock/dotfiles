@@ -26,11 +26,10 @@ log(){
 
 escapist(){
 	if [ $# -eq 0 ]; then
-		print="cat"
+		cat
 	else
-		print='printf "%s\0" "$@"'
-	fi
-	eval "$print" | sed -z 's/'\''/'\''\\'\'\''/g; s/\(.*\)/'\''\1'\''/g' | tr '\0' ' '
+		printf "%s\0" "$@"
+	fi | sed -z 's/'\''/'\''\\'\'\''/g; s/\(.*\)/'\''\1'\''/g' | tr '\0' ' '
 }
 
 getfd(){
@@ -94,31 +93,25 @@ while true; do
 	case "$1" in
 		-echo)
 			echo=true
-			shift
-			continue;;
+			shift;;
 		-noshare)
 			append --unshare-user-try --unshare-ipc --unshare-pid --unshare-net --unshare-uts --unshare-cgroup-try
-			shift
-			continue;;
+			shift;;
 		-share)
 			for arg in $2; do
 				sed -zi '/^--unshare-'"$arg"'-try$\|^--unshare-'"$arg"'$/d' "$argfile"
 			done
-			shift 2
-			continue;;
+			shift 2;;
 		-env)
 			append --clearenv
 			for var in $2; do eval 'printf -- "--setenv\0%s\0%s\0" "$var" "$'"$var"'"' ; done >> "$argfile"
-			shift 2
-			continue;;
+			shift 2;;
 		-root)
 			append --unshare-user --uid 0 --gid 0 --setenv USER root --setenv HOME /root
-			shift
-			continue;;
+			shift;;
 		-wine)
 			appath --bind-try "$WINEPREFIX" "$XDG_DATA_HOME"/lutris
-			shift
-			continue;;
+			shift;;
 		-display)
 			[ "$DISPLAY" ] && {
 				display=$(echo "$DISPLAY" | cut -c2-)
@@ -127,42 +120,34 @@ while true; do
 			[ "$WAYLAND_DISPLAY" ] && {
 				appath --bind "$XDG_RUNTIME_DIR/$WAYLAND_DISPLAY"
 			}
-			shift
-			continue;;
+			shift;;
 		-exec)
 			eval "$3" | appath "$2"
-			shift 3
-			continue;;
+			shift 3;;
 		-data)
 			databinder "$2" "$3" "$4"
-			shift 4
-			continue;;
+			shift 4;;
 		-net)
 			printf "/etc/%s\0" hostname hosts localtime nsswitch.conf resolv.conf ca-certificates ssl | appath --ro-bind-try
 			shift
-			set -- -share net "$@"
-			continue;;
+			set -- -share net "$@";;
 		-gpu)
 			find /dev -maxdepth 1 -name nvidia\* -print0 | appath --dev-bind-try
 			appath --dev-bind-try /dev/dri /sys/dev/char /sys/devices/pci0*
-			shift
-			continue;;
+			shift;;
 		-cpu)
 			appath --dev-bind-try /sys/devices/system/cpu
-			shift
-			continue;;
+			shift;;
 		-audio)
 			find "$XDG_RUNTIME_DIR" -maxdepth 1 -print0 | grep -z '/pipewire\|/pulse' | appath --ro-bind-try
 			appath --ro-bind-try /etc/alsa /etc/pipewire /etc/pulse ~/.asoundrc "$XDG_CONFIG_HOME"/pipewire "$XDG_CONFIG_HOME"/pulse
-			shift
-			continue;;
+			shift;;
 		-theme)
 			appath --bind-try /etc/fonts "$XDG_CONFIG_HOME"/fontconfig "$XDG_DATA_HOME"/fonts \
 				"$HOME"/.icons "$XDG_DATA_HOME"/icons "$XDG_CONFIG_HOME"/Kvantum "$XDG_CONFIG_HOME"/qt[56]ct \
 				"$HOME"/.gtkrc-2.0 "$XDG_CONFIG_HOME"/gtk-[234].0 "$XDG_CONFIG_HOME"/xsettingsd \
 				"$XDG_DATA_HOME"/mime "$XDG_CONFIG_HOME"/mimeapps.list "$XDG_CONFIG_HOME"/dconf
-			shift
-			continue;;
+			shift;;
 		-dbus) # and portals,,, experimental (BECAUSE PORTALS STILL SUCK)
 			appath --bind-try /run/dbus /etc/machine-id /etc/passwd "$XDG_CONFIG_HOME"/xdg-desktop-portal
 			if [ "$DBUS_SESSION_BUS_ADDRESS" ]; then
@@ -175,12 +160,10 @@ while true; do
 # name=org.mozilla.firefox"
 			# export DBUS_SESSION_BUS_ADDRESS="unix:path=$XDG_RUNTIME_DIR/bus"
 			shift
-			set -- -share ipc "$@"
-			continue;;
+			set -- -share ipc "$@";;
 		-path)
 			printf %s "$PATH" | tr : "\0" | appath --ro-bind-try
-			shift
-			continue;;
+			shift;;
 		-preset)
 			case $2 in
 				game)
@@ -193,26 +176,23 @@ while true; do
 					exit 1;;
 			esac
 			shift 2
-			eval set -- "$arg" "$(escapist "$@")"
-			continue;;
+			eval set -- "$arg" "$(escapist "$@")";;
 		-noreap)
 			unset reap
-			shift
-			continue;;
+			shift;;
 		-interactive)
 			# CVE-2017-5226
 			interactive=true
 			unset reap
-			shift
-			continue;;
+			shift;;
 		-autobind)
 			# Walk back from argv[] and detect the first argument that exists as a
 			# path, then bind either that or its parent dir
 			autobind=true
-			shift
-			continue;;
+			shift;;
+		*)
+			break;;
 	esac
-	break
 done
 
 # defaults
@@ -305,7 +285,7 @@ fi
 	trap 'killchildren 15 $pid' TERM INT
 	trap 'killchildren 9 $pid' HUP
 
-	while [ -d /proc/$pid ]; do
+	while ps -p $pid >/dev/null; do
 		wait $pid
 		[ $? -gt 128 ] && continue
 		break
