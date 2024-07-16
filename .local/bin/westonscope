@@ -41,12 +41,13 @@ sed -i 1,2d "$notifyfile1" "$notifyfile2"
 	exit 1
 }
 DISPLAY=:$(grep -o '[0-9]' "$notifyfile1")
-WAYLAND_DISPLAY=wayland-$(grep -o '[0-9]' "$notifyfile1")
+WAYLAND_DISPLAY=wayland-$(grep -o '[0-9]' "$notifyfile2")
 rm "$notifyfile1" "$notifyfile2"
 unset notifyfile1 notifyfile2
 
 kill $daemon
-(waitpid $$; kill $weston) &
+(waitpid $$; kill $weston 2>/dev/null) &
+(waitpid $weston; kill $$ 2>/dev/null) &
 export DISPLAY
 export WAYLAND_DISPLAY
 exec "$@"
