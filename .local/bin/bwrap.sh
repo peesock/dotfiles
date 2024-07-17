@@ -250,21 +250,21 @@ trap - EXIT
 # start bwrap
 if [ "$echo" ]; then
 	printf 'bwrap %s\n' "$(printf '%s\0' "$@" | cat "$argfile" - | escapist)"
+	exiter
 else
 	fifo=$(mktemp -u)
 	mkfifo "$fifo"
 	(cat "$argfile" > "$fifo"; rm "$argfile" "$fifo") &
 	fd=$(getfd)
 
-	eval bwrap --args "$fd" "$(escapist "$@")$fd<" '"$fifo"' $reap
+	eval "$([ "$reap" ] || echo exec)" bwrap --args "$fd" "$(escapist "$@")$fd<" '"$fifo"' $reap
 fi
 
-[ "$echo" ] && exiter
 [ "$reap" ] && {
 	pid=$!
 
 	killchildren()(
-	log signal $(($? - 128)) received
+	log signal $((status - 128)) received
 		if [ "$1" = '9' ]; then
 			log kill -9ing: "$2"
 			kill -s 9 -- "$2"
@@ -287,7 +287,8 @@ fi
 
 	while ps -p $pid >/dev/null; do
 		wait $pid
-		[ $? -gt 128 ] && continue
-		break
+		status=$?
+		[ $status -gt 128 ] && continue
+		return "$status"
 	done
 }
