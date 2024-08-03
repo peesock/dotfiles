@@ -122,9 +122,9 @@ cleanup(){
 }
 
 if [ "$notify" ]; then
-	log()( echo "$programName": "$@"; notify-send "$programName" "$@" )
+	log(){ echo "$programName": "$@"; notify-send "$programName" "$@"; }
 else
-	log()( echo "$programName": "$@" )
+	log(){ echo "$programName": "$@"; }
 fi
 
 exiter(){
@@ -140,7 +140,6 @@ trap 'killed=true; echo killed; exit' INT TERM
 trap exiter EXIT
 
 sync()(
-	trap '' INT TERM
 	[ "$1" = "auto" ] && {
 		if [ -e "$unpackFile" ]; then
 			sync
@@ -177,14 +176,16 @@ sync()(
 		}
 	else
 		echo 'from ram to disk'
-		[ -e "$unpackFile" ] || {
-			log "cannot sync, nothing in '$tmpDir'."
-			echo "try syncing disk-to-ram before running the daemon."
+		{ [ -e "$unpackFile" ] && [ -h "$linkDir" ]; }|| {
+			log "cannot sync"
+			[ -e "$unpackFile" ] || echo no unpackfile
+			[ -h "$linkDir" ] || echo no linkdir
 			exit 2
 		}
 		[ -e "$lockFile" ] && {
-			echo 'lock in place, waiting for removal...'
-			while [ -e "$lockFile" ]; do sleep 1; done
+			echo 'lock in place, returning'
+			# while [ -e "$lockFile" ]; do sleep 1; done
+			return 1
 		}
 		touch "$lockFile"
 		rsync -aHAWXv --delete "$linkDir/" "$staticDir" >&2 &
@@ -198,6 +199,7 @@ sync()(
 	echo >&2
 )
 
+# daemon stuff
 if [ ! "$daemon" ]; then
 	sync "${3-auto}"
 else

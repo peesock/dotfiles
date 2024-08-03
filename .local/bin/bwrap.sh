@@ -114,11 +114,11 @@ while true; do
 			shift;;
 		-display)
 			[ "$DISPLAY" ] && {
-				display=$(echo "$DISPLAY" | cut -c2-)
-				appath --bind "/tmp/.X11-unix/X$display"
+				display=$(echo "$DISPLAY" | grep -o '[0-9]' | head -n1)
+				appath --ro-bind "/tmp/.X11-unix/X$display"
 			}
 			[ "$WAYLAND_DISPLAY" ] && {
-				appath --bind "$XDG_RUNTIME_DIR/$WAYLAND_DISPLAY"
+				appath --ro-bind "$XDG_RUNTIME_DIR/$WAYLAND_DISPLAY"
 			}
 			shift;;
 		-exec)
@@ -202,7 +202,7 @@ done
 [ "$autobind" ] && {
 	i=$#
 	unset dir sym
-	while [ $i -gt 1 ]; do
+	while [ $i -ge 1 ]; do
 		eval arg=\$$i
 		[ -e "$arg" ] && {
 			dir=$(realpath -mLs "$arg")
@@ -264,7 +264,7 @@ fi
 	pid=$!
 
 	killchildren()(
-	log signal $((status - 128)) received
+	log signal $(($? - 128)) received
 		if [ "$1" = '9' ]; then
 			log kill -9ing: "$2"
 			kill -s 9 -- "$2"
@@ -288,7 +288,7 @@ fi
 	while ps -p $pid >/dev/null; do
 		wait $pid
 		status=$?
-		[ $status -gt 128 ] && continue
+		[ $? -gt 128 ] && continue
 		return "$status"
 	done
 }

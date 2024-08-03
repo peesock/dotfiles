@@ -40,8 +40,8 @@ sed -i 1,2d "$notifyfile1" "$notifyfile2"
 	echo "$0": display issue
 	exit 1
 }
-DISPLAY=:$(grep -o '[0-9]' "$notifyfile1")
-WAYLAND_DISPLAY=wayland-$(grep -o '[0-9]' "$notifyfile2")
+DISPLAY=":$(grep -o '[0-9]' "$notifyfile1")"
+WAYLAND_DISPLAY=$(sed 's/\(.\+\)\.lock$/\1/' "$notifyfile2")
 rm "$notifyfile1" "$notifyfile2"
 unset notifyfile1 notifyfile2
 

@@ -2,7 +2,7 @@
 	exec dbus-run-session -- zsh -l
 (
 	{
-		i=$(who | awk '{if ($1 == "'$USER'") print}' | wc -l)
+		i=$(who | awk 'BEGIN{i=0} {if ($1 == "'"$USER"'") i++} END{print i}')
 		# first tty login
 		if [ $i -eq 1 ]; then
 			echo hi

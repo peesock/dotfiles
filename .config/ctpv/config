@@ -1,3 +1,4 @@
+set chafasixel
 priority lynx
 preview mediainfo audio/* {{
 	mediainfo "${f}"

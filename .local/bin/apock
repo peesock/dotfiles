@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/sh -x
 
 programName=$(basename "$0")
 tmpDir="/tmp/$USER/$programName/$DISPLAY"
@@ -79,30 +79,36 @@ fallback(){
 	waitpid $coverPID; ps -p $lockPID >/dev/null && (
 		echo "Cover failed. Used fallback"
 		notify-send -u critical "Lock screen" "Cover failed. Used fallback" &
-		kill $funcPID
-		kill $lockPID
+		kill $(cat "$tmpDir"/* 2>/dev/null)
 		lock
+		# ponder using pid namespaces
 	)
-} 2>/dev/null
+}
 
-setfull()(
-	until xprop _NET_WM_STATE -id $1 | grep -F "STATE_FULLSCREEN" >/dev/null; do
-		xdotool windowstate --add FULLSCREEN $1
-	done
-)
+setfull(){
+	xdotool windowstate --add FULLSCREEN $1
+}
 
 exec_winid(){
-	# sets global vars $wid and $pid (and $tmp)
+	# sets global vars $wid and $pid
 	tmp=$(mktemp)
-	xwininfo -root -tree | grep '^\s*0x[0-9]\+' | grep -v '\s\+1x1+0+0\s\++0+0' | awk '{print $1}' | sort > "$tmp"
+	data=$(xwininfo -root -tree) || {
+		echo fatal error
+		exit 1
+	}
 	"$@" & pid=$!
+	printf %s "$data" | grep '^\s*0x[0-9]\+' | grep -v '\s\+1x1+0+0\s\++0+0' | awk '{print $1}' | sort > "$tmp"
+	(waitpid $pid; kill $$) &
+	unset data
 	while true; do
 		for wid in $(xwininfo -root -tree | grep '^\s*0x[0-9]\+' | grep -v '\s\+1x1+0+0\s\++0+0' | awk '{print $1}' | sort | comm --nocheck-order -13 "$tmp" -); do
 			xwininfo -id "$wid" | grep -qF 'Map State: IsViewable' && break 2
 		done
 		sleep 0.05
 	done
+	kill $!
 	rm "$tmp"
+	unset tmp
 } >&2
 
 # set up visualizer
@@ -181,6 +187,7 @@ xscreensaver()(
 	echo $lockPID | tee "$tmpDir/coverPID" "$tmpDir/lockPID" >/dev/null
 	export XSCREENSAVER_WINDOW="$wid"
 
+	trap 'kill -9 $exePID' TERM
 	while true; do
 		unset exePID
 		until [ "$exe" ]; do
@@ -188,6 +195,7 @@ xscreensaver()(
 			file --mime-type "$exe" | grep -F executable >/dev/null || unset exe
 		done
 		echo displaying "'$exe'" >&2
+		notify-send -u low -r 13 "displaying '$exe'"
 		$exe --root & exePID=$!
 		echo $! > "$tmpDir/$!"
 		unset exe
@@ -207,8 +215,10 @@ pre
 exe=$1
 if [ "$exe" ]; then
 	shift
-	fallback & fallbackPID=$!
-	$exe "$@" & echo $! > "$tmpDir/funcPID"
+	fallback &
+	echo $! > "$tmpDir/fallbackPID"
+	$exe "$@" &
+	echo $! > "$tmpDir/funcPID"
 	wait $!
 else
 	lock

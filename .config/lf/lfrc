@@ -4,11 +4,13 @@ set ifs "\n"
 set scrolloff 10
 #set icons "$LF_ICONS"
 set period 1
-set previewer ctpv
+set sixel true
+set incfilter true
+
+set previewer ctpv.sh
 set cleaner ctpvclear
 &ctpv -s $id
 &ctpvquit $id
-set incfilter true
 
 # cmd open ${{
 #     case $(file --mime-type "$(readlink -f $f)" -b) in
