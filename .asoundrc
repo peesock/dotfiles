@@ -6,6 +6,10 @@
 # 				default "desktop"
 # 		}
 # }
+# ctl.!default {
+# 	type hw
+# 	card Loopback
+# }
 
 pcm.desktop { # asym device, sets up capture and playback into one package
 	type asym

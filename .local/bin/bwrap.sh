@@ -141,6 +141,7 @@ while true; do
 		-audio)
 			find "$XDG_RUNTIME_DIR" -maxdepth 1 -print0 | grep -z '/pipewire\|/pulse' | appath --ro-bind-try
 			appath --ro-bind-try /etc/alsa /etc/pipewire /etc/pulse ~/.asoundrc "$XDG_CONFIG_HOME"/pipewire "$XDG_CONFIG_HOME"/pulse
+			appath --dev-bind /dev/snd
 			shift;;
 		-theme)
 			appath --bind-try /etc/fonts "$XDG_CONFIG_HOME"/fontconfig "$XDG_DATA_HOME"/fonts \
