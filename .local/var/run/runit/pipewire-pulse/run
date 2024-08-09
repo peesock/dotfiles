@@ -1,0 +1,3 @@
+#!/bin/sh
+sv check ../wireplumber >/dev/null || exit 1
+exec pipewire-pulse

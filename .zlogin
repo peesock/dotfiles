@@ -2,11 +2,10 @@
 	exec dbus-run-session -- zsh -l
 (
 	{
-		i=$(who | awk 'BEGIN{i=0} {if ($1 == "'"$USER"'") i++} END{print i}')
-		# first tty login
-		if [ $i -eq 1 ]; then
+		# first login
+		if [ ! -e $XDG_RUNTIME_DIR/.login ]; then
+			touch $XDG_RUNTIME_DIR/.login
 			echo hi
-			(pipewire & pipewire-pulse & sleep 1; wireplumber &) &
 			basename -za "$HOME/.local/var/run/runit"/* | xargs -0 svurun
 		fi
 	} &
