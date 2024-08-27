@@ -2,7 +2,7 @@
 
 # Program to convert between file formats and codecs with presets.
 
-programName=$(basename "$0")
+programName=${0##*/}
 usage(){
 	echo "\
 usage:
@@ -84,7 +84,7 @@ fi
 
 converter(){
 	echo
-	tmp=$(mktemp -u).$type
+	tmp=$(mktemp -p "${infile%/*}" -u).$type
 	ffmpeg -hide_banner $inOpts -i "$infile" $outOpts "$tmp" ||
 		{ rm -v "$tmp"; exit 1; }
 	mv -v "$tmp" "$outfile"

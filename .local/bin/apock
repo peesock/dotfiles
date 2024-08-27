@@ -1,6 +1,6 @@
 #!/bin/sh -x
 
-programName=$(basename "$0")
+programName=${0##*/}
 tmpDir="/tmp/$USER/$programName/$DISPLAY"
 lockFile=$tmpDir/lock
 cycle=$(xset q | awk '/cycle/{print $4}')
@@ -74,7 +74,7 @@ fallback(){
 	sleep 3
 	# external variables used here have to be imported from $pidDIR
 	for f in "$tmpDir"/*PID ; do
-		eval "$(basename "$f")='$(cat "$f")'"
+		eval "${f##*/}='$(cat "$f")'"
 	done
 	waitpid $coverPID; ps -p $lockPID >/dev/null && (
 		echo "Cover failed. Used fallback"
@@ -119,7 +119,7 @@ visualizer()(
 	# pause all non-server programs accessing the fifo
 	fifoFile="/tmp/mpd.fifo"
 	# pause the shells attached to visualizers (if any) to prevent shitassery
-	blackParents=$(chsh -l | while read sh; do basename "$sh"; done)
+	blackParents=$(chsh -l | while read -r sh; do echo "${sh##*/}"; done)
 	# protect these programs accessing the fifo from being paused
 	whiteChildren="mpd safe_fifo"
 

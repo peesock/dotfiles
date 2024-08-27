@@ -2,7 +2,7 @@
 
 gitDir="$HOME/.dotfiles" # default
 workingDir="$HOME"
-programName=$(basename "$0")
+programName=${0##*/}
 
 eval 'help(){
 	printf %s "\
@@ -80,7 +80,7 @@ link()(
 
 			outfile=$(dotpath "$infile")
 		fi
-		mkdir -p "$(dirname "$outfile")"
+		mkdir -p "${outfile%/*}"
 		echo "linking '$infile' to '$outfile'" >&2
 		cp -rflT $([ ! "$force" ] && [ "$restore" ] && echo '-i') "$infile" "$outfile"
 	done

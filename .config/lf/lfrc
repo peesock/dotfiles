@@ -112,7 +112,7 @@ cmd catmusic ${{
 	n=$(echo $fx | wc -l)
 	[ $n -eq 1 ] && printf "extract '$fx' ? [y/N] " || printf "extract $n items? [y/N] "
  	read ans
- 	[ $ans = "y" ] && echo $fx | while read file; do aunpack $file; done && printf "Extracted"
+ 	[ "$ans" = "y" ] && echo $fx | while read -r file; do unar "$file"; done && printf "Extracted"
  }}
 
 

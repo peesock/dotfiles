@@ -12,7 +12,7 @@ ctl="$1"
 pcmdev="${2-default}"
 stateFile="$HOME/.cache/softmute/$pcmdev-$ctl"
 # stateFile="/tmp/$USER/softmute/$pcmdev-$ctl"
-mkdir -p "$(dirname "$stateFile")"
+mkdir -p "${stateFile%/*}"
 
 chanvols="$(amixer -D "$pcmdev" sget "$ctl" | grep '%\]' | awk -F'[][]' '{ print $2 }')"
 ! [ -s "$stateFile" ] && echo "$chanvols" > "$stateFile"

@@ -1,7 +1,8 @@
 #!/bin/sh
 
 fotoDir="$HOME/pics/screenshots" # default ss dir
-foto="$(date +%Y%m%d"-"%H%M%S"-""$(($(date +%N | sed "s/^0*//g; s/\.0*/./g") / 1000000))").png" # timestamping
+date=$(date +%Y%m%d-%H%M%S-%N)
+foto=$(echo "$date" | cut -d- -f-2)-$(echo "$date" | cut -d- -f3 | awk '{print $1 / 1000000}' | cut -d. -f1).png
 
 if [ "$WAYLAND_DISPLAY" ]; then
 	clip(){
@@ -54,8 +55,8 @@ until [ $i -gt $# ]; do
 			;;
 		"edit") # uses advanced proprietary shellscripted basicrop algorithm......
 			recentPic="$(find "/tmp/$USER/screenshot" "$fotoDir" -maxdepth 1 -type f -printf '%T+\t%p\n' | sort -nr | cut -f2 | xargs file --mime-type  2>/dev/null | LC_ALL=C grep -F 'image/' | cut -d ':' -f 1 | head -n1)"
-			[ "$temp" ] && newDir="$(dirname "$recentPic")" || newDir="$fotoDir"
-			[ -f "$newDir/$(basename "$recentPic")" ] && newPic="$newDir/$(basename "$recentPic" | sed 's/\(.*\)\..*/\1/')-c.$(echo "$recentPic" | sed 's/.*\.//')" || newPic="$newDir/$(basename "$recentPic")"
+			[ "$temp" ] && newDir=${recentPic%/*} || newDir="$fotoDir"
+			[ -f "$newDir/${recentPic##*/}" ] && newPic="$newDir/$(echo "${recentPic##*/}" | sed 's/\(.*\)\..*/\1/')-c.$(echo "$recentPic" | sed 's/.*\.//')" || newPic=$newDir/${recentPic##*/}
 
 			basicrop "$recentPic" "$newPic" || exit 1
 			! [ -f "$newPic" ] && newPic="$recentPic" && overwritten=true

@@ -3,7 +3,7 @@
 id=$1
 exe=${2-"$1"}
 
-programName="$(basename "$0")"
+programName=${0##*/}
 path="/tmp/$USER/$programName"
 mkdir -p "$path"
 
