@@ -1,6 +1,10 @@
 set chafasixel
 priority lynx
 preview mediainfo audio/* {{
-	mediainfo "${f}"
+	mediainfo -- "${f}"
 }}
 # vim: ft=conf
+
+preview js application/javascript {{
+	bat --color always --style plain -- "${f}"
+}}

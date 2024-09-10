@@ -1,6 +1,6 @@
 #!/bin/sh
 
-xset -q | grep "Caps Lock:\s*on" && xdotool key Caps_Lock
+xset -q | grep -q "Caps Lock:\s*on" && xdotool key Caps_Lock
 setxkbmap -option compose:menu
 setxkbmap -option caps:escape_shifted_capslock
 xset r rate 300 50 # keyboard 300ms delay and 50hz repeat rate

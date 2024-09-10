@@ -211,7 +211,7 @@ screen.connect_signal("request::desktop_decoration", function(s)
 	-- 		widget:set_text("CPU=" .. stdout)
 	-- 	end
 	-- )
-	ram_monitor = vicious.register(textbox(), vicious.widgets.mem, "RAM=$2", 5)
+	ram_monitor = vicious.register(textbox(), vicious.widgets.mem, "RAM=$2", 1)
 	-- ram_monitor = awful.widget.watch(
 	-- 	"sh -c \"free -m | awk '/^Mem/ {print $3}'\"",
 	-- 	5,

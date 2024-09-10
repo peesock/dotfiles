@@ -5,23 +5,24 @@
 # This script tries to add as few arguments to `bwrap` as possible,
 # merely improving the cli rather than making a new one. -interactive
 # and -noreap are exceptions.
-# Using -interactive can allow arbitrary code execution if connected to
-# a terminal and lacking mitigations.
-# Using -noreap can allow programs to fork bomb you with no effective
-# means of death, unless you --unshare-pid later on and kill -9 the
+# Using -interactive (which implies -noreap) can allow arbitrary code
+# execution if connected to a terminal and lacking mitigations.
+# Using -noreap can allow programs to fork bomb you with no guaranteed
+# way to kill them, unless you --unshare-pid later and kill -9 the
 # bwrap process responsible for setting the new namespace.
 # Without -noreap, sending $$ kill -INT or -TERM will send TERM to all
 # sandboxed children. Sending -HUP will kill -9 the entire namespace.
-# *All* of /bin, /lib, and /usr/share are made visible.
+
+# *All* of /bin, /lib, and /usr/share are made visible for convenience.
 
 export XDG_CONFIG_HOME="${XDG_CONFIG_HOME-"$HOME/.config"}"
 export XDG_DATA_HOME="${XDG_DATA_HOME-"$HOME/.local/share"}"
 export XDG_RUNTIME_DIR="${XDG_RUNTIME_DIR-"/run/user/$(id -u)"}"
 export WINEPREFIX="${WINEPREFIX-"$HOME/.wine"}"
 
-programName=$(basename "$0")
+programName=${0##*/}
 log(){
-	echo "$programName:" "$@"
+	printf '%s\n' "$programName: $*"
 }
 
 escapist(){
@@ -132,14 +133,13 @@ while true; do
 			shift
 			set -- -share net "$@";;
 		-gpu)
-			find /dev -maxdepth 1 -name nvidia\* -print0 | appath --dev-bind-try
-			appath --dev-bind-try /dev/dri /sys/dev/char /sys/devices/pci0*
+			appath --dev-bind-try /dev/dri /sys/dev/char /sys/devices/pci0* /sys/module/nvidia* /dev/nvidia*
 			shift;;
 		-cpu)
 			appath --dev-bind-try /sys/devices/system/cpu
 			shift;;
 		-audio)
-			find "$XDG_RUNTIME_DIR" -maxdepth 1 -print0 | grep -z '/pipewire\|/pulse' | appath --ro-bind-try
+			printf "%s\0" "$XDG_RUNTIME_DIR"/* | grep -z '/pipewire\|/pulse' | appath --ro-bind-try
 			appath --ro-bind-try /etc/alsa /etc/pipewire /etc/pulse ~/.asoundrc "$XDG_CONFIG_HOME"/pipewire "$XDG_CONFIG_HOME"/pulse
 			appath --dev-bind /dev/snd
 			shift;;
@@ -212,14 +212,14 @@ done
 				appath --bind "$sym"
 				dir=$(readlink "$dir")
 			}
-			[ ! -d "$dir" ] && dir=$(dirname "$dir")
+			[ ! -d "$dir" ] && dir=${dir%/*}
 			appath --bind "$dir"
 			break
 		}
 		i=$((i - 1))
 	done
 	if [ "$dir" ]; then
-		log autobound "$dir" "$sym"
+		log autobound "$(escapist "$dir")" "$([ -n "$sym" ] && escapist "$sym")"
 	else
 		log autobound nothing
 	fi
