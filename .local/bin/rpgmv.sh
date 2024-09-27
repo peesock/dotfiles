@@ -9,15 +9,22 @@ if [ "$1" = 'fix' ]; then
 	done
 	rm "$tmp"
 else
-	tmp=.
-	[ "$1" = "nomount" ] || {
-		tmp=$(mktemp -d)
-		cicpoffs . "$tmp"
-		(waitpid $$; fusermount -u "$tmp"; rmdir "$tmp") &
-	}
+	# tmp=.
+	# [ "$1" = "nomount" ] || {
+	# 	tmp=$(mktemp -d)
+	# 	cicpoffs . "$tmp"
+	# 	(waitpid $$; fusermount -u "$tmp"; rmdir "$tmp") &
+	# }
+	# if command -v bwrap.sh >/dev/null; then
+	# 	exec bwrap.sh -noshare -display -gpu -cpu -audio -dbus -theme -autobind --ro-bind /opt /opt nw "$tmp"
+	# else
+	# 	exec nw "$tmp"
+	# fi
 	if command -v bwrap.sh >/dev/null; then
-		exec bwrap.sh -noshare -display -gpu -cpu -audio -dbus -theme -autobind --ro-bind /opt /opt nw "$tmp"
+		tmp=$(mktemp -up /)
+		exec bwrap.sh -noshare -display -gpu -cpu -audio -dbus -theme --ro-bind /opt /opt --bind "$PWD" "$tmp" nw "$tmp"
 	else
 		exec nw "$tmp"
 	fi
+	
 fi
