@@ -258,7 +258,11 @@ else
 	(cat "$argfile" > "$fifo"; rm "$argfile" "$fifo") &
 	fd=$(getfd)
 
-	eval "$([ "$reap" ] || echo exec)" bwrap --args "$fd" "$(escapist "$@")$fd<" '"$fifo"' $reap
+	# bwrap doesn't allow extra capabilities
+	[ "$(id -u)" -ne 0 ] && {
+		grep -qF 'CapEff:	0000000000000000' /proc/self/status || unshare='unshare -c'
+	}
+	eval "$([ "$reap" ] || echo exec)" "$unshare" bwrap --args "$fd" "$(escapist "$@")$fd<" '"$fifo"' $reap
 fi
 
 [ "$reap" ] && {
