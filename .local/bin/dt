@@ -107,11 +107,14 @@ mv()(
 
 unlinked()(
 	[ "$1" = -v ] && v=true
-	[ "$1" = -a ] &&
+	if [ "$1" = link ]; then
+		[ "$2" = -R ] && r=-R\ -f
 		fun(){
-			while read -r file; do link "$file"; done
-		} ||
+			while read -r file; do link $r -- "$file"; done
+		}
+	else
 		fun(){ cat; }
+	fi
 	i=0
 	g ls-files | awk -v work="$workingDir" -v git="$gitDir" '{print work "/" $0; print git "/" $0}' |
 		while read -r current; do
