@@ -87,18 +87,7 @@ cmd mediapick ${{
 }}
 
 cmd videomusic &{{
-	cover="$(mktemp -u tmp.XXXX.png)"
-	if ! ffmpeg -i "$f" "$cover"; then
-		if ! cover="$(echo "$(dirname "$f")"/cover.* )" ; then
-			cover=$HOME/download/assets/speaker-orange.png
-		fi
-		else
-			tmp=true
-	fi
-		
-	ffmpeg -loop 1 -i "${cover}" -i "$f" -vf "crop=trunc(iw/2)*2:trunc(ih/2)*2" -c:v libx264 -r 5 -pix_fmt yuv420p -tune stillimage -crf 30 -c:a aac -b:a 530k -ar 48000 -shortest "${1-$(echo $f | sed 's/\(.*\)\..*/\1/')}".mp4
-	[ $tmp ] && rm "$cover"
-	notify-send -t 3000 "Done converting"
+	vidmusic.sh "$f" "$1"
 }}
 
 cmd penguinmusic ${{
