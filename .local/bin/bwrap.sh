@@ -171,7 +171,7 @@ while true; do
 					arg='-noshare -wine -display -gpu -cpu -audio'
 					;;
 				browser)
-					arg='-noshare -net -dbus -display -gpu -cpu -audio -theme'
+					arg='-noshare -dbus -display -gpu -cpu -audio -theme'
 					;;
 				*)
 					exit 1;;

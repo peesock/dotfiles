@@ -15,7 +15,7 @@ else
 	else
 		tmp=$(mktemp -d)
 		cicpoffs . "$tmp"
-		(waitpid $$; fusermount -z "$tmp"; rmdir "$tmp") &
+		( (waitpid $$; fusermount -u "$tmp" || { fuser -Mkv "$tmp"; fusermount -u "$tmp" || fusermount -z "$tmp"; }; rmdir "$tmp") &)
 		exec bwrap.sh -noshare -display -gpu -cpu -audio -dbus -theme -autobind --ro-bind /opt /opt nw "$tmp"
 	fi
 fi

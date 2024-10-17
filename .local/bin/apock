@@ -191,7 +191,7 @@ xscreensaver()(
 	while true; do
 		unset exePID
 		until [ "$exe" ]; do
-			exe=$(find /usr/lib/xscreensaver -maxdepth 1 -type f | grep -v "xscreensaver/xscreensaver\|webcollage\|font\|text\|phosphor\|mapscroller\|droste\|mirrorblob\|photo\|flipscreen3d\|carousel\|esper" | shuf -n1)
+			exe=$(find /usr/lib/xscreensaver -maxdepth 1 -type f | grep -v "xscreensaver/xscreensaver\|webcollage\|font\|text\|phosphor\|mapscroller\|droste\|mirrorblob\|photo\|flipscreen3d\|carousel\|esper\|gflux\|antspotlight" | shuf -n1)
 			file --mime-type "$exe" | grep -F executable >/dev/null || unset exe
 		done
 		echo displaying "'$exe'" >&2

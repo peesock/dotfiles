@@ -1,13 +1,27 @@
 #!/bin/sh
 [ $# -eq 0 ] && exit 1
 while true; do
-[ "$1" = '-f' ] && full=true && shift && continue
-[ "$1" = '--' ] && shift
-break
+	case $1 in
+		-f)
+			full=true;;
+		-g)
+			screenW=$1
+			screenH=$2
+			shift 2;;
+		# --nox*)
+		# 	noxwayland=true;;
+		--)
+			shift; break;;
+		*)
+			break;
+	esac
+	shift
 done
-screenW=$(xrandr --current | grep '\*' | uniq | awk '{print $1}')
-screenH=$(echo $screenW | cut -d'x' -f2)
-screenW=$(echo $screenW | cut -d'x' -f1)
+[ "$screenW" ] || {
+	screenW=$(xrandr --current | grep '\*' | uniq | awk '{print $1}')
+	screenH=$(echo "$screenW" | cut -d'x' -f2)
+	screenW=$(echo "$screenW" | cut -d'x' -f1)
+}
 
 exiter(){
 	s=$?
@@ -31,7 +45,7 @@ for f in "$notifyfile1" "$notifyfile2"; do
 done
 
 # now launch weston and wait
-weston --width="$screenW" --height="$screenH" --shell=kiosk --xwayland $([ "$full" ] && echo --fullscreen) & weston=$!
+weston --width="$screenW" --height="$screenH" --shell=kiosk $([ "$full" ] && echo --fullscreen) & weston=$!
 (waitpid $weston; kill -s USR1 $$) & daemon=$!
 
 wait $p1 $p2
