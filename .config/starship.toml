@@ -35,6 +35,7 @@ deleted = "x"
 [cmd_duration]
 min_time = 1
 format = "took [$duration]($style)"
+show_milliseconds = true
 disabled = false
 
 

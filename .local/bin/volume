@@ -35,7 +35,7 @@ done
 	device=${1-"$(pactl get-default-sink)"}
 	[ "$action" = volume ] && {
 		vol=$(pactl get-sink-volume "$device" | awk 'NR==1{print $5+0}')
-			[ "$(echo "$vol $dir $value" | bc)" -ge 100 ] && dir='' value=100
+		[ "$(echo "$vol $dir $value" | bc)" -ge 100 ] && dir='' value=100
 		pactl set-sink-volume "$device" "$dir$value%"
 		[ "$quiet" ] ||
 			notify-send -r 13 -u low -t 1000 "$device:" "$([ "$dir" ] && echo "$(echo "$vol $dir $value" | bc)%" || echo "$value%")" &
