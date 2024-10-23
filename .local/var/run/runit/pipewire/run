@@ -1,2 +1,3 @@
 #!/bin/sh
+sv u ../pipewire-pulse ../wireplumber
 exec pipewire
