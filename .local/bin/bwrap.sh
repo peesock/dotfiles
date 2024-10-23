@@ -16,9 +16,9 @@
 # *All* of /bin, /lib, and /usr/share are made visible for convenience.
 
 export XDG_CONFIG_HOME="${XDG_CONFIG_HOME-"$HOME/.config"}"
+export XDG_CACHE_HOME="${XDG_CACHE_HOME-"$HOME/.cache"}"
 export XDG_DATA_HOME="${XDG_DATA_HOME-"$HOME/.local/share"}"
 export XDG_RUNTIME_DIR="${XDG_RUNTIME_DIR-"/run/user/$(id -u)"}"
-export WINEPREFIX="${WINEPREFIX-"$HOME/.wine"}"
 
 programName=${0##*/}
 log(){
@@ -111,7 +111,10 @@ while true; do
 			append --unshare-user --uid 0 --gid 0 --setenv USER root --setenv HOME /root
 			shift;;
 		-wine)
-			appath --bind-try "$WINEPREFIX" "$XDG_DATA_HOME"/lutris
+			appath --bind-try "${WINEPREFIX-"$HOME/.wine"}" "$XDG_DATA_HOME"/lutris
+			shift;;
+		-proton)
+			appath --bind-try "${STEAM_COMPAT_DATA_PATH:-"$XDG_DATA_HOME/proton-pfx"}" "${STEAM_COMPAT_CLIENT_INSTALL_PATH:-"$XDG_DATA_HOME/Steam"}" "${DXVK_STATE_CACHE_PATH:-"$XDG_CACHE_HOME/dxvk-cache-pool"}"
 			shift;;
 		-display)
 			[ "$DISPLAY" ] && {
@@ -168,7 +171,7 @@ while true; do
 		-preset)
 			case $2 in
 				game)
-					arg='-noshare -wine -display -gpu -cpu -audio'
+					arg='-noshare -wine -proton -display -gpu -cpu -audio'
 					;;
 				browser)
 					arg='-noshare -dbus -display -gpu -cpu -audio -theme'
