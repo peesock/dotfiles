@@ -15,7 +15,7 @@ if [ "$1" = "warn" ]; then
 		while [ "$cycle" -gt 0 ]; do
 			t=2000
 			[ "$cycle" -eq 1 ] && t=500 # prevents dunst from displaying this when waking up
-			notify-send -r 13 -t $t "Locking" "$cycle\s"
+			notify-send -r 13 -t $t "Locking" "$cycle\s" &
 			sleep 1
 			cycle=$((cycle - 1))
 		done
@@ -195,7 +195,7 @@ xscreensaver()(
 			file --mime-type "$exe" | grep -F executable >/dev/null || unset exe
 		done
 		echo displaying "'$exe'" >&2
-		notify-send -u low -r 13 "displaying '$exe'"
+		notify-send -u low -r 13 "displaying '$exe'" &
 		$exe --root & exePID=$!
 		echo $! > "$tmpDir/$!"
 		unset exe

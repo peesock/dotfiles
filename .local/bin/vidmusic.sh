@@ -12,4 +12,4 @@ fi
 
 nice ffmpeg -loop 1 -i "${cover}" -i "$input" -vf "crop=trunc(iw/2)*2:trunc(ih/2)*2" -c:v libx264 -r 5 -pix_fmt yuv420p -tune stillimage -crf 30 -c:a aac -b:a 530k -ar 48000 -shortest "${2:-$(printf %s "$input" | sed 's/\(.*\)\..*/\1/')}".mp4
 [ "$tmp" ] && rm "$tmp"
-notify-send -t 3000 "Done converting"
+notify-send -t 3000 "Done converting" &

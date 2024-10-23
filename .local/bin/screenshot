@@ -72,7 +72,7 @@ if [ "$time" ]; then
 	t=1050
 	until [ "$time" -le 0 ]; do
 		[ "$time" -eq 1 ] && t=500
-		notify-send -r 13 -t $t "Screenshot" "$time"s
+		notify-send -r 13 -t $t "Screenshot" "$time"s &
 		sleep 1
 		time=$((time - 1))
 	done

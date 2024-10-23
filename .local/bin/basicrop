@@ -154,7 +154,7 @@ editoptions(){
 				keyInput="overwrite"
 				editoptions
 			else
-				notify-send -t 2000 "Saving"
+				notify-send -t 2000 "Saving" &
 				mv "$pointerFile" "$OUTPUT"
 				kill $imgPID
 				rm "/tmp/$USER/basicrop/"*
@@ -163,7 +163,7 @@ editoptions(){
 			exitBool=true
 			;;
 		cancel)
-			notify-send -t 2000 "Cancelling"
+			notify-send -t 2000 "Cancelling" &
 			kill $imgPID
 			rm "/tmp/$USER/basicrop/"*
 			unset cropString
@@ -171,7 +171,7 @@ editoptions(){
 			exitCode=1
 			;;
 		overwrite)
-			notify-send -t 2000 "Overwriting"
+			notify-send -t 2000 "Overwriting" &
 			kill $imgPID
 			mv "$pointerFile" "$INPUT"
 			rm "/tmp/$USER/basicrop/"*
@@ -229,6 +229,6 @@ edit() {
 }
 echo "$INPUT"
 echo "$OUTPUT"
-notify-send -t 2000 "Editing"
+notify-send -t 2000 "Editing" &
 edit
 exit $exitCode

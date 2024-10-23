@@ -26,19 +26,19 @@ else
 	}
 fi
 crop=$(crop) || {
-	notify-send "Cancelling"
+	notify-send "Cancelling" &
 	exit
 }
 screenshot "$tmpPic"
 
 text=$(zbarimg -q "$tmpPic" | cut -d: -f2-)
 if [ "$text" ]; then
-	clip "$text" && notify-send "Grabbed barcode"
+	clip "$text" && notify-send "Grabbed barcode" &
 else
 	text=$(tesseract "$tmpPic" stdout --oem 1 -l eng+osd)
 	if [ "$text" ]; then
-		clip "$text" && notify-send "Grabbed text"
+		clip "$text" && notify-send "Grabbed text" &
 	else
-		notify-send "Nothing detected"
+		notify-send "Nothing detected" &
 	fi
 fi
