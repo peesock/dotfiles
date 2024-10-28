@@ -171,7 +171,7 @@ while true; do
 		-preset)
 			case $2 in
 				game)
-					arg='-noshare -wine -proton -display -gpu -cpu -audio'
+					arg='-noshare -display -gpu -cpu -audio'
 					;;
 				browser)
 					arg='-noshare -dbus -display -gpu -cpu -audio -theme'
