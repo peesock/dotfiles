@@ -1,0 +1,32 @@
+#!/bin/sh
+file=$1
+shift
+begin=$(date +%s)
+unformat(){
+	i=1
+	awk '{print $1}' | {
+		while read -r line; do
+			case $i in 1) m=3600;; 2) m=60;; 3) m=1;; esac
+			[ "$line" -eq "$line" ] || {
+				echo "file '$file' not formatted?" >&2
+				exit 1
+			}
+			sum=$((sum + (line * m)))
+			i=$((i + 1))
+		done
+		[ $i -ne 4 ] && exit
+		echo "$sum"
+	}
+}
+{
+	waitpid $$
+	time=$(($(date +%s) - begin))
+	[ "$time" -eq 0 ] && exit
+	old=0
+	[ -e "$file" ] && {
+		old=$(unformat < "$file") || exit
+	}
+	new=$((old + time))
+	printf '%d h\n%d m\n%d s\n' $((new/3600)) $((new%3600/60)) $((new%60)) > "$file"
+} &
+exec "$@"
