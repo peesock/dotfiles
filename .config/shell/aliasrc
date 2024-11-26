@@ -52,7 +52,7 @@ alias \
 	sdn="shutdown -h now" \
 	e='$EDITOR' \
 	P="pacman" \
-	p="paru" \
+	p="nice paru" \
 	z="zathura"
 
 #special aliases

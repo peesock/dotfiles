@@ -162,7 +162,8 @@ visualizer()(
 xscreensaver()(
 	eval 'set -- '$(getopt -o 't:c' -- "$@")
 	t=2m
-	unset exe
+	unset exe cycle
+	export PATH="/usr/lib/xscreensaver:$PATH"
 	while true; do
 		case "$1" in
 			-t)
@@ -191,12 +192,13 @@ xscreensaver()(
 	while true; do
 		unset exePID
 		until [ "$exe" ]; do
-			exe=$(find /usr/lib/xscreensaver -maxdepth 1 -type f | grep -v "xscreensaver/xscreensaver\|webcollage\|font\|text\|phosphor\|mapscroller\|droste\|mirrorblob\|photo\|flipscreen3d\|carousel\|esper\|gflux\|antspotlight" | shuf -n1)
+			exe=$(find /usr/lib/xscreensaver -maxdepth 1 -type f | grep -v "xscreensaver/xscreensaver\|.\+\..\+" | shuf -n1)
 			file --mime-type "$exe" | grep -F executable >/dev/null || unset exe
 		done
 		echo displaying "'$exe'" >&2
 		notify-send -u low -r 13 "displaying '$exe'" &
-		$exe --root & exePID=$!
+		# unshare ensures it dies
+		unshare -cpf --mount-proc --kill-child "$exe" --root & exePID=$!
 		echo $! > "$tmpDir/$!"
 		unset exe
 		[ "$cycle" ] && {
