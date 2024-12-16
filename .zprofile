@@ -13,3 +13,6 @@ export QT_QPA_PLATFORMTHEME=qt5ct
 export GTK_THEME='Dracula'
 export GOPATH="$HOME/.local/share/go/"
 export MPD_HOST="$HOME/.local/share/mpd/socket"
+export GTK_IM_MODULE=fcitx
+export QT_IM_MODULE=fcitx
+export XMODIFIERS=@im=fcitx
