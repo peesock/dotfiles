@@ -38,22 +38,25 @@ return {
 				if active then
 					for type, icon in pairs(signs) do
 						local hl = "DiagnosticSign" .. type
-						vim.fn.sign_define(hl, {
-							text = icon,
-							texthl = hl,
-							numhl = "none",
+						vim.diagnostic.config({
+							signs = {
+								text = icon,
+								texthl = hl,
+								numhl = "none",
+							}
 						})
 					end
 					vim.opt.signcolumn = "yes:1"
 					vim.opt.numberwidth = 1
-
 				else
 					for type, icon in pairs(signs) do
 						local hl = "DiagnosticSign" .. type
-						vim.fn.sign_define(hl, {
-							text = icon,
-							texthl = hl,
-							numhl = hl,
+						vim.diagnostic.config({
+							signs = {
+								text = icon,
+								texthl = hl,
+								numhl = hl,
+							}
 						})
 					end
 					vim.opt.signcolumn = "no"
@@ -76,15 +79,7 @@ return {
 			end
 			diagnostical(diagnostics_active)
 
-			-- add borders to K stuff
-			vim.lsp.handlers["textDocument/hover"] = vim.lsp.with(vim.lsp.handlers.hover, {
-				border = "rounded",
-			})
-			vim.lsp.handlers["textDocument/signatureHelp"] = vim.lsp.with(vim.lsp.handlers.signature_help, {
-				border = "rounded",
-			})
-
-			local lsp_capabilities = require('cmp_nvim_lsp').default_capabilities()
+			-- local lsp_capabilities = require('cmp_nvim_lsp').default_capabilities()
 			local lsp_attach = function(client, bufnr)
 				local opts = {
 					buffer = bufnr,
@@ -122,7 +117,7 @@ return {
 				function(server_name)
 					local config = {
 						on_attach = lsp_attach,
-						capabilities = lsp_capabilities,
+						-- capabilities = lsp_capabilities,
 					}
 					lspconfig[server_name].setup(config)
 				end,
@@ -150,20 +145,15 @@ return {
 			pip = {
 				-- Whether to upgrade pip to the latest version in the virtual environment before installing packages.
 				upgrade_pip = false,
-
 				-- These args will be added to `pip install` calls. Note that setting extra args might impact intended behavior
 				-- and is not recommended.
-				--
 				-- Example: { "--proxy", "https://proxyserver" }
 				install_args = {},
 			},
 
-			-- Controls to which degree logs are written to the log file. It's useful to set this to vim.log.levels.DEBUG when
-			-- debugging issues with package installations.
+			-- Controls to which degree logs are written to the log file.
 			log_level = vim.log.levels.INFO,
 
-			-- Limit for the maximum amount of packages to be installed at the same time. Once this limit is reached, any further
-			-- packages that are requested to be installed will be put in a queue.
 			max_concurrent_installers = 4,
 
 			github = {
@@ -181,7 +171,7 @@ return {
 			--   - mason.providers.registry-api (default) - uses the https://api.mason-registry.dev API
 			--   - mason.providers.client                 - uses only client-side tooling to resolve metadata
 			providers = {
-				"mason.providers.registry-api",
+				"mason.providers.client",
 			},
 
 			ui = {
@@ -191,43 +181,24 @@ return {
 				-- The border to use for the UI window. Accepts same border values as |nvim_open_win()|.
 				-- border = "none",
 
-				-- Width of the window. Accepts:
-				-- - Integer greater than 1 for fixed width.
-				-- - Float in the range of 0-1 for a percentage of screen width.
 				width = 0.8,
-
-				-- Height of the window. Accepts:
-				-- - Integer greater than 1 for fixed height.
-				-- - Float in the range of 0-1 for a percentage of screen height.
 				height = 0.9,
 
 				icons = {
-					-- The list icon to use for installed packages.
 					package_installed = "◍",
-					-- The list icon to use for packages that are installing, or queued for installation.
 					package_pending = "◍",
-					-- The list icon to use for packages that are not installed.
 					package_uninstalled = "◍",
 				},
 
 				keymaps = {
-					-- Keymap to expand a package
 					toggle_package_expand = "<CR>",
-					-- Keymap to install the package under the current cursor position
 					install_package = "i",
-					-- Keymap to reinstall/update the package under the current cursor position
 					update_package = "u",
-					-- Keymap to check for new version for the package under the current cursor position
 					check_package_version = "c",
-					-- Keymap to update all installed packages
 					update_all_packages = "U",
-					-- Keymap to check which installed packages are outdated
 					check_outdated_packages = "C",
-					-- Keymap to uninstall a package
 					uninstall_package = "X",
-					-- Keymap to cancel a package installation
 					cancel_installation = "<C-c>",
-					-- Keymap to apply language filter
 					apply_language_filter = "<C-f>",
 				},
 			},

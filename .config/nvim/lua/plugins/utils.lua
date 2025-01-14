@@ -1,23 +1,5 @@
 return {
 	{
-		'echasnovski/mini.ai',
-		config = function()
-			require('mini.ai').setup()
-		end,
-	},
-
-	{
-		'echasnovski/mini.align',
-		config = function()
-			require('mini.align').setup({
-				mappings = {
-					start = 'gA',
-				},
-			})
-		end,
-	},
-
-	{
 		'echasnovski/mini.clue',
 		config = function()
 			local miniclue = require('mini.clue')
@@ -50,12 +32,20 @@ return {
 
 				clues = {
 					-- Enhance this by adding descriptions for <Leader> mapping groups
-					miniclue.gen_clues.builtin_completion(),
+					-- miniclue.gen_clues.builtin_completion(),
 					miniclue.gen_clues.g(),
 					miniclue.gen_clues.marks(),
 					miniclue.gen_clues.registers(),
 					miniclue.gen_clues.windows(),
 					miniclue.gen_clues.z(),
+				},
+
+				window = {
+					config = {
+						width = "auto",
+						row = "auto",
+						col = "auto"
+					}
 				},
 			})
 		end,
@@ -63,8 +53,6 @@ return {
 
 	{
 		'numToStr/Comment.nvim',
-		opts = {
-		},
 	},
 
 	{
@@ -175,16 +163,10 @@ return {
 
 	{
 		"andymass/vim-matchup",
-		opts = {
-		},
 	},
 
 	{
 		"kovetskiy/sxhkd-vim",
-	},
-
-	{
-		"junegunn/goyo.vim",
 	},
 
 	{
@@ -204,15 +186,6 @@ return {
 	},
 
 	{
-		'gelguy/wilder.nvim',
-		config = function()
-			require('wilder').setup({
-				modes = {':', '/', '?'}
-			})
-		end,
-	},
-
-	{
 		'j-hui/fidget.nvim',
 		-- enabled = false,
 		-- event = "LspAttach",
@@ -225,36 +198,4 @@ return {
 		},
 	},
 
-	{
-		'3rd/image.nvim',
-		enabled = false,
-		opts = {
-			backend = "ueberzug",
-			integrations = {
-				markdown = {
-					enabled = true,
-					clear_in_insert_mode = false,
-					download_remote_images = true,
-					only_render_image_at_cursor = false,
-					filetypes = { "markdown", "vimwiki" }, -- markdown extensions (ie. quarto) can go here
-				},
-				neorg = {
-					enabled = true,
-					clear_in_insert_mode = false,
-					download_remote_images = true,
-					only_render_image_at_cursor = false,
-					filetypes = { "norg" },
-				},
-			},
-			max_width = nil,
-			max_height = nil,
-			max_width_window_percentage = nil,
-			max_height_window_percentage = 50,
-			window_overlap_clear_enabled = false, -- toggles images when windows are overlapped
-			window_overlap_clear_ft_ignore = { "cmp_menu", "cmp_docs", "" },
-			editor_only_render_when_focused = false, -- auto show/hide images when the editor gains/looses focus
-			tmux_show_only_in_active_window = false, -- auto show/hide images in the correct Tmux window (needs visual-activity off)
-			hijack_file_patterns = { "*.png", "*.jpg", "*.jpeg", "*.gif", "*.webp", "*.avif", "*.jxl", }, -- render image files as images when opened
-		},
-	}
 }
