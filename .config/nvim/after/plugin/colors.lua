@@ -1,5 +1,5 @@
 function ColorMyPencils(color)
-	color = color or "onedark_vivid"
+	color = color or "onedark"
 	vim.cmd.colorscheme(color)
 
 	-- some colorizor mods
@@ -22,4 +22,4 @@ function ColorMyPencils(color)
 	end
 	-- vim.api.nvim_set_hl(0, "LineNr", { bg = "none"})
 end
-ColorMyPencils("onedark_vivid") -- initialize with my most beloved theme
+ColorMyPencils() -- initialize with my most beloved theme

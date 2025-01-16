@@ -4,19 +4,19 @@
 pcall(require, "luarocks.loader")
 
 -- Standard awesome library
-gears = require("gears")
-awful = require("awful")
+local gears = require("gears")
+local awful = require("awful")
 require("awful.autofocus")
 -- Widget and layout library
-wibox = require("wibox")
+local wibox = require("wibox")
 -- Theme handling library
-beautiful = require("beautiful")
+local beautiful = require("beautiful")
 -- Notification library
 -- naughty = require("naughty")
 -- Declarative object management
-ruled = require("ruled")
-menubar = require("menubar")
-vicious = require("vicious")
+local ruled = require("ruled")
+local menubar = require("menubar")
+local vicious = require("vicious")
 -- local hotkeys_popup = require("awful.hotkeys_popup")
 -- Enable hotkeys help widget for VIM and other apps
 -- when client with a matching name is opened:
@@ -45,19 +45,19 @@ beautiful.init(theme_path)
 -- If you do not like this or do not have such a key,
 -- I suggest you to remap Mod4 to another key using xmodmap or other tools.
 -- However, you can use another modifier like Mod1, but it may interact with others.
-mod = "Mod4"
-modalt = "Mod1"
+local mod = "Mod4"
+local modalt = "Mod1"
 
 -- Terminal
-terminal = os.getenv("TERMINAL") or "xterm"
+local terminal = os.getenv("TERMINAL") or "xterm"
 -- Editor
-editor = os.getenv("EDITOR") or "vi"
-editor_cmd = terminal .. " -e " .. editor
+local editor = os.getenv("EDITOR") or "vi"
+local editor_cmd = terminal .. " -e " .. editor
 -- }}}
 
 -- {{{ Menu
 -- Create a launcher widget and a main menu
-myawesomemenu = {
+local myawesomemenu = {
 	-- {
 	-- 	"hotkeys",
 	-- 	function()
@@ -74,7 +74,7 @@ myawesomemenu = {
 		end,
 	},
 }
-mymainmenu = awful.menu({
+local mymainmenu = awful.menu({
 	items = {
 		{ "awesome", myawesomemenu, beautiful.awesome_icon },
 	},
@@ -648,7 +648,7 @@ end)
 -- Remove gaps and borders from max/fullscreen layouts and modes :)
 beautiful.gap_single_client = true
 
-function gap_filler(t)
+local function gap_filler(t)
 	local layout = awful.layout.get()["name"]
 	local clients = screen[awful.screen.focused()].clients
 	local tiled_clients_lookup = {}
@@ -698,11 +698,11 @@ client.connect_signal("unfocus", function(c)
 end)
 
 -- Hide the bar in fullscreen modes (if a client is on screen)
-function fullscreen_bar()
+local function fullscreen_bar()
 	local s = awful.screen.focused()
 	local clients = screen[awful.screen.focused()].clients
 
-	function check_fullclient()
+	local function check_fullclient()
 		for k,v in ipairs(clients) do
 			if screen[s].clients[k].fullscreen == true then
 				return true
@@ -725,12 +725,9 @@ end
 tag.connect_signal("property::layout", fullscreen_bar)
 tag.connect_signal("property::selected", fullscreen_bar)
 client.connect_signal("property::fullscreen", fullscreen_bar)
-client.connect_signal("request::manage", fullscreen_bar)
-client.connect_signal("request::unmanage", fullscreen_bar)
+client.connect_signal("request::activate", fullscreen_bar)
+client.connect_signal("unfocus", fullscreen_bar)
 
 -- }}}
 
 print("NUTS HANG BELOW:")
--- sync clock (within like 10ms)
-os.execute("i=1; while true; do [ $i -eq 1 ] && var=$(date +%S) && i=$((i + 1)); [ $(date +%S) -ne $var ] && break; done")
-textclock:force_update()
