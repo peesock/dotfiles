@@ -3,7 +3,8 @@ set -x
 tmp="$(mktemp tmp.XXXXXXX.png)"
 cover=$tmp
 input=$(realpath "$1")
-if [ $# -ge 2 ] || ! ffmpeg -i "$input" "$tmp" -y; then
+ffmpeg -i "$input" "$tmp" -y
+if [ $# -ge 2 ] || ! file --mime-type | cut -d: -f2- | grep -q image/; then
 	cover=$(
 		dir="${2:-"${input%/*}"}"
 		tmp2=$(mktemp)
@@ -31,6 +32,8 @@ if [ $# -ge 2 ] || ! ffmpeg -i "$input" "$tmp" -y; then
 		magick -- "$cover" -resize '2000>' "$tmp"
 		cover=$tmp
 	fi
+else
+	magick -- "$tmp" -resize '2000>' "$tmp"
 fi
 
 nice ffmpeg -loop 1 -i "${cover}" -i "$input" -vf "crop=trunc(iw/2)*2:trunc(ih/2)*2" -c:v libx264 -r 5 -pix_fmt yuv420p -tune stillimage -crf 30 -c:a aac -b:a 530k -ar 48000 -shortest "$(printf %s "$input" | sed 's/\(.*\)\..*/\1/').mp4"
