@@ -27,19 +27,21 @@ riverctl map -repeat normal Super+Shift Comma send-to-output previous
 riverctl map -repeat normal Super+Shift Return zoom
 riverctl map -repeat normal Super Tab focus-previous-tags
 
+# layout stuff
+riverctl default-layout bsp-layout
 # Super+H and Super+L to decrease/increase the main ratio of rivertile(1)
-riverctl map -repeat normal Super H send-layout-cmd rivertile "main-ratio -0.05"
-riverctl map -repeat normal Super L send-layout-cmd rivertile "main-ratio +0.05"
-
-# Super+{Up,Right,Down,Left} to change layout orientation
-riverctl map -repeat normal Super Up    send-layout-cmd rivertile "main-location top"
-riverctl map -repeat normal Super Right send-layout-cmd rivertile "main-location right"
-riverctl map -repeat normal Super Down  send-layout-cmd rivertile "main-location bottom"
-riverctl map -repeat normal Super Left  send-layout-cmd rivertile "main-location left"
-
-# Super+Shift+H and Super+Shift+L to increment/decrement the main count of rivertile(1)
-riverctl map -repeat normal Super+Shift H send-layout-cmd rivertile "main-count +1"
-riverctl map -repeat normal Super+Shift L send-layout-cmd rivertile "main-count -1"
+# riverctl map -repeat normal Super H send-layout-cmd rivertile "main-ratio -0.05"
+# riverctl map -repeat normal Super L send-layout-cmd rivertile "main-ratio +0.05"
+#
+# # Super+{Up,Right,Down,Left} to change layout orientation
+# riverctl map -repeat normal Super Up    send-layout-cmd rivertile "main-location top"
+# riverctl map -repeat normal Super Right send-layout-cmd rivertile "main-location right"
+# riverctl map -repeat normal Super Down  send-layout-cmd rivertile "main-location bottom"
+# riverctl map -repeat normal Super Left  send-layout-cmd rivertile "main-location left"
+#
+# # Super+Shift+H and Super+Shift+L to increment/decrement the main count of rivertile(1)
+# riverctl map -repeat normal Super+Shift H send-layout-cmd rivertile "main-count +1"
+# riverctl map -repeat normal Super+Shift L send-layout-cmd rivertile "main-count -1"
 
 # Super+Alt+{H,J,K,L} to move views
 riverctl map -repeat normal Super+Alt H move left 100
@@ -151,10 +153,8 @@ riverctl rule-add -app-id 'float*' -title 'foo' float
 # Make all views with app-id "bar" and any title use client-side decorations
 riverctl rule-add -app-id "bar" csd
 
-# Set the default layout generator to be rivertile and start it.
-# River will send the process group of the init executable SIGTERM on exit.
-riverctl default-layout rivertile
-rivertile -main-ratio 0.5 -view-padding 7 -outer-padding 7 &
+river-bsp-layout --inner-gap 7 --outer-gap 7 --split-perc 0.5 &
+# rivertile -main-ratio 0.5 -view-padding 7 -outer-padding 7 &
 
 dbus-update-activation-environment --all
 setbg --stretch

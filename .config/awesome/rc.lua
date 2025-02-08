@@ -727,6 +727,7 @@ tag.connect_signal("property::selected", fullscreen_bar)
 client.connect_signal("property::fullscreen", fullscreen_bar)
 client.connect_signal("request::activate", fullscreen_bar)
 client.connect_signal("unfocus", fullscreen_bar)
+client.connect_signal("request::unmanage", fullscreen_bar)
 
 -- }}}
 
