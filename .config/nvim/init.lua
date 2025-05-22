@@ -41,6 +41,8 @@ opt.listchars = "tab:│ ,trail:-,lead:-,nbsp:+,"
 -- │ ┆ ┊ ·
 opt.timeoutlen = 1000
 -- opt.colorcolumn = "80"
+opt.textwidth = 100
+opt.fo = "qj"
 
 -- Behavior
 opt.hlsearch = false
@@ -65,6 +67,7 @@ opt.swapfile = false
 -- opt.backupdir = "/tmp/vim"
 opt.undodir = os.getenv("HOME") .. "/.local/share/nvim/undodir"
 opt.undofile = true
+g.nofixendofline = true
 
 -- Vim specific
 opt.hidden = true -- Do not save when switching buffers

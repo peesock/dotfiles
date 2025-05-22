@@ -144,22 +144,6 @@ return {
 	},
 
 	{
-		'echasnovski/mini.pairs',
-		config = function()
-			require('mini.pairs').setup()
-			vim.g.minipairs_disable = true
-			mapper({'i','n'}, '<m-a>', function()
-				vim.g.minipairs_disable = not vim.g.minipairs_disable
-				if vim.g.minipairs_disable then
-					print 'autopairs disabled'
-				else
-					print 'autopairs enabled'
-				end
-			end, 'Toggle autopairs')
-		end
-	},
-
-	{
 		'tpope/vim-surround',
 	},
 
