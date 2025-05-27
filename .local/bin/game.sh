@@ -6,7 +6,12 @@ if [ "$1" != 1 ]; then
 	trap 'rm "$args" "$mountlist" 2>/dev/null' EXIT
 	while true; do
 		case $1 in
-			-dir)
+			-g|-game)
+				game=$2
+				shift
+				set -- -dir "$@"
+				;;
+			-d|-dir)
 				if [ -f "$2" ]; then
 					if [ "${2%.dwarfs}" != "$2" ]; then
 						dir=${2%.*}
@@ -19,6 +24,12 @@ if [ "$1" != 1 ]; then
 				else
 					dir=$2
 				fi
+				[ "$Dir" ] || Dir=$dir
+				[ "$game" ] && {
+					printf %s\\0 -k game true >>"$args"
+					game=
+				}
+				printf %s\\0 -r "$dir" >>"$args"
 				shift 2
 				;;
 			-p)
@@ -40,9 +51,9 @@ if [ "$1" != 1 ]; then
 				;;
 		esac
 	done
-	dir=${dir:-.}
+	dir=${Dir:-"${dir:-.}"}
 
-	(cat "$args"; printf %s\\0 "$0" 1 "$dir" "$pids" "$@") | xargs -0 overlay2.sh -R -d -s storage
+	(cat "$args"; printf %s\\0 "$0" 1 "$dir" "$pids" "$@") | xargs -0 overlay2.sh -d -s storage
 
 	n=$(tr -cd '\0' <"$mountlist" | wc -c) 2>/dev/null
 	for i in $(seq 1 "$n" | tac); do
@@ -55,5 +66,7 @@ else
 	cd "$1" || exit
 	[ "$2" ] && waitpid $2
 	shift 2
-	exec timer ../runtime "$@"
+	runtime=../runtime
+	[ "$1" = . ] && runtime=./runtime
+	exec timer $runtime "$@" </dev/tty
 fi
