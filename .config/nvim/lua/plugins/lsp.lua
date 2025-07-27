@@ -78,7 +78,7 @@ return {
 			end
 			diagnostical(diagnostics_active)
 
-			-- mapper("n", "K", function() vim.lsp.buf.hover() end, "", {remap = false})
+			-- mapper("n", "K", function() vim.lsp.buf.hover() end, "")
 			mapper("n", "gd", function() vim.lsp.buf.definition() end, "Definition")
 			mapper("n", "gD", function() vim.lsp.buf.declaration() end, "Declaration")
 			mapper("n", "]d", function() vim.diagnostic.goto_next() end, "Next diagnostic")

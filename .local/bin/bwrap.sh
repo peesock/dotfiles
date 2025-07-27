@@ -194,6 +194,9 @@ while true; do
 			# path, then bind either that or its parent dir
 			autobind=true
 			shift;;
+		-cwd)
+			appath --bind "$PWD"
+			shift;;
 		*)
 			break;;
 	esac
@@ -225,6 +228,7 @@ done
 		log autobound "$(escapist "$dir")" "$([ -n "$sym" ] && escapist "$sym")"
 	else
 		log autobound nothing
+		exit 1
 	fi
 }
 

@@ -40,10 +40,15 @@ if [ "$1" != 1 ]; then
 				shift
 				;;
 			-w)
+				export WINEDEBUG=-all
 				export WINEPREFIX="$HOME/.wine"
 				wineboot &
 				printf %s\\0 -r "$WINEPREFIX" >>"$args"
 				pids="$pids $!"
+				shift
+				;;
+			-ncd)
+				ncd=true
 				shift
 				;;
 			*)
@@ -52,6 +57,7 @@ if [ "$1" != 1 ]; then
 		esac
 	done
 	dir=${Dir:-"${dir:-.}"}
+	[ "$ncd" ] && dir=.
 
 	(cat "$args"; printf %s\\0 "$0" 1 "$dir" "$pids" "$@") | xargs -0 overlay2.sh -d -s storage
 
@@ -65,8 +71,8 @@ else
 	shift
 	cd "$1" || exit
 	[ "$2" ] && waitpid $2
-	shift 2
 	runtime=../runtime
 	[ "$1" = . ] && runtime=./runtime
+	shift 2
 	exec timer $runtime "$@" </dev/tty
 fi
