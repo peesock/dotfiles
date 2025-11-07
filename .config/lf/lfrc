@@ -4,7 +4,6 @@ set ifs "\n"
 set scrolloff 10
 #set icons "$LF_ICONS"
 set period 1
-set sixel true
 set incfilter true
 
 set previewer ctpv.sh
@@ -123,7 +122,7 @@ map <c-n> push :mkdir<space>
 # map <c-s> set hidden!
 map <enter> shell
 map x $$f
-map X !$f
+map X &$f
 map o %echo $fx | sed "s/^/file:\/\//g" | tr '\n' '\0' | xargs -0 mpc add && echo "added musicallies"
 # map o &mimeopen $f
 # map O $mimeopen --ask $f

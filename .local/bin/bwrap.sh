@@ -74,7 +74,7 @@ appath(){
 
 append \
 --ro-bind /usr/bin /usr/bin \
---ro-bind /usr/share /usr/share/ \
+--ro-bind /usr/share /usr/share \
 --ro-bind /usr/lib /usr/lib \
 --ro-bind /usr/lib32 /usr/lib32 \
 --symlink lib /usr/lib64 \
@@ -82,6 +82,9 @@ append \
 --symlink /usr/lib /lib \
 --symlink /usr/bin /bin \
 --symlink /usr/bin /sbin \
+--ro-bind /usr/local/bin /usr/local/bin \
+--ro-bind /usr/local/lib /usr/local/lib \
+--ro-bind /usr/local/etc /usr/local/etc \
 --tmpfs /tmp \
 --tmpfs /run \
 --proc /proc \
@@ -114,7 +117,7 @@ while true; do
 			appath --bind-try "${WINEPREFIX-"$HOME/.wine"}" "$XDG_DATA_HOME"/lutris
 			shift;;
 		-proton)
-			appath --bind-try "${STEAM_COMPAT_DATA_PATH:-"$XDG_DATA_HOME/proton-pfx"}" "${STEAM_COMPAT_CLIENT_INSTALL_PATH:-"$XDG_DATA_HOME/Steam"}" "${DXVK_STATE_CACHE_PATH:-"$XDG_CACHE_HOME/dxvk-cache-pool"}"
+			appath --bind-try "${STEAM_COMPAT_DATA_PATH:-"$XDG_DATA_HOME/proton-pfx"}" "${STEAM_COMPAT_CLIENT_INSTALL_PATH:-"$XDG_DATA_HOME/Steam"}" "${DXVK_STATE_CACHE_PATH:-"$XDG_CACHE_HOME/dxvk-cache-pool"}" ~/.steam
 			shift;;
 		-display)
 			[ "$DISPLAY" ] && {
@@ -128,6 +131,12 @@ while true; do
 		-exec)
 			eval "$3" | appath "$2"
 			shift 3;;
+		-pass)
+			for i in $(seq 1 "$2"); do
+				append "$3"
+				shift
+			done
+			shift 2;;
 		-data)
 			databinder "$2" "$3" "$4"
 			shift 4;;
