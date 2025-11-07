@@ -1,7 +1,9 @@
 #!/bin/sh
 
-networkDev=eth0
-ipnet='192.168.4.0/22'
+networkDev=$(ip -j r get 9.9.9.9 | jq -r '.[0] | .dev, .gateway')
+ipnet=$(echo "$networkDev" | tail -n1)
+networkDev=$(echo "$networkDev" | head -n1)
+ipnet="$ipnet/$(ip -4 -j a show dev eth0 | jq '.[0].addr_info.[0].prefixlen')"
 
 ip=$(echo "$ipnet" | cut -d/ -f1)
 cidr=$(echo "$ipnet" | cut -d/ -f2)
@@ -89,9 +91,9 @@ ipRecurse(){
 }
 ipList=$(mktemp -u)
 mkfifo "$ipList"
-(for n in $(seq "$bot" "$top"); do
+for n in $(seq "$bot" "$top"); do
 	ipRecurse "$i" "$baseip.$n"
-done | tail -n+2 | head -n-3) > "$ipList" &
+done > "$ipList" &
 
 tmpFifo=$(mktemp -u)
 mkfifo "$tmpFifo"
