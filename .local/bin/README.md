@@ -26,21 +26,20 @@ apock xscreensaver
 
 
 # basicrop
-image cropping script.
+Image cropping script.
 
-dependencies:
+Dependencies:
 - feh
 - hacksaw/grim
 - sxhkd
 - graphicsmagick
 - bc
 
-hacksaw and graphicsmagick are easily replacable by slop and imagemagick.
-
-despite using an X hotkey daemon, it does actually work through Xwayland because the image viewer feh is also xwayland, so pressing keys on the feh window will also be registered by sxhkd.
+Despite using an X hotkey daemon, it does actually work through Xwayland because the image viewer
+feh is also xwayland, so pressing keys on the feh window will also be registered by sxhkd.
 
 ## usage
-`basicrop infile outfile` if outfile isn't specified, infile will always be overwritten.
+`basicrop infile [outfile]` if outfile isn't specified, infile always be overwritten.
 - 'c' to crop
 - 'u' to undo
 - 'A' to toggle anti-aliasing
@@ -48,48 +47,81 @@ despite using an X hotkey daemon, it does actually work through Xwayland because
 - 'Return' to save file
 - 'Shift' + 'Return' to overwrite file
 
-because there's no way to communicate the image's location to the script, you cannot zoom in or translate.
-
-### how
-`basicrop input output` will open `input` in fullscreen mode. this way, your screen dimensions act as a ruler, and we know where to crop based on hacksaw output and image dimensions.
-
-sxhkd is how we take keyboard input, which sucks, but i don't care.
+Because there's no way to communicate the image's location to the script, you cannot zoom in or
+otherwise transform the view of the image and crop as expected.
 
 
-# memory-sync
-mostly for moving firefox's profile to memory for speed and hard disk life.
+# bwrap.sh
+Wrapper for the bubblewrap sandboxing tool.
+
+Dependencies:
+- bubblewrap
+
+My quick and dirty attempt to make a general application sandboxer, à la flatpak, without
+containers/package management.
+
+It is only tested on my particular Nvidia + Intel machine on Arch/Artix linux, and file locations
+for their corresponding things change, so there are no guarantees that your program will run inside
+an otherwise functional sandbox without manual intervention.
 
 ## usage
-`memory-sync [options] uniqueName dirToCopy [ [-p $pid | binary] | [ram | disk | auto] ]`
-the flags are confusing -- i might rewrite argument handling later.
-the script has comments to explain all flags.
+```
+bwrap.sh [-options...] [--bwrap-options...] [--] program [arguments...]
+```
+- -echo: do not run the command; echo it
+- -noshare: wrapper version of --unshare-all
+- -share "ARG1 \[ARG2...]": re-share namespaces removed by -noshare
+- -env "\[ARG1...]": remove environment except for vars listed in ARG...
+- -root: pretend to be root user
+- -wine: add paths for wine usage
+- -proton: add paths for (standalone) proton usage
+- -display: add access to current Xorg/wayland sockets
+- -exec OPT CMD: expand \0-delimited output of CMD to `OPT line line` per-line
+- -pass NUM ARGS...: say the next NUM ARGS are to be added to the bwrap command line
+- -data OPT PATH DATA: create a file at PATH containing DATA according to OPT={--file, --bind-data,
+  --ro-bind-data}
+- -net: add networking
+- -gpu: add gpu devices
+- -cpu: add cpu devices
+- -audio: expose audio
+- -theme: add theming files
+- -dbus: expose dbus interface
+- -path: add all $PATH locations
+- -preset PRESET: set a group of options where PRESET={browser, game}
+- -noreap: do not reap child process group
+- -interactive: sets -noreap, makes sandbox less secure but allows TUI applications
+- -autobind: bind the dir of the first argument of bwrap.sh that looks like a path
+- -cwd: bind cwd
 
-`memory-sync firefox ~/.mozilla/firefox` will sync firefox profile to either ram or to disk, depending on whether it's already been synced to ram.
-
-`memory-sync -D -e -u 30m firefox ~/.mozilla/firefox "firefox"` will sync firefox profile to ram once every 30 minutes, and then sync and exit on firefox exit.
-
+In the future i will attempt to make or steal some kind of library for linux sandboxing file
+locations/methods that any application can use, instead of 300 lines of shell.
 
 
 # dt
-dotfile git management script. it uses hardlinks instead of symlinks to manage the repo, following the argument of [this blogpost](https://port19.xyz/tech/hardlinks/).
+Dotfile git management script. Uses hardlinks instead of symlinks to manage the repo, following the
+argument of [this blogpost](https://port19.xyz/tech/hardlinks/).
+
+Dependencies:
+- GNU cp
 
 ## usage
-- add          run link and git add on all arguments
-- dotpath      returns either the git (default) or working (-R) path of specified argument
-- g            runs git with modified options and file paths to change the dot repo
-- help         helps
-- init         run git init on git dir
-- link         recursively hardlink all arguments to git dir (requires GNU cp)
-- link -R      runs link in reverse, restoring your dotfiles from git. use -f to force
-- mv           mv + git mv, only 2 args (i need to rewrite this stupid program in C)
-- rm           recursively remove *both* existing hardlinks (and folders) of argument
-- run          run arguments as if you were in the git repo (if outside, defaults to top)
-- unlinked     list files in git dir that don't exist in working dir
+- add: run link and git add on all arguments
+- dotpath: returns either the git (default) or working (-R) path of specified argument
+- g: runs git with modified options and file paths to change the dot repo
+- help: helps
+- init: run git init on git dir
+- link: recursively hardlink all arguments to git dir (requires GNU cp)
+- link -R: runs link in reverse, restoring your dotfiles from git. use -f to force
+- mv: mv + git mv, only 2 args (i need to rewrite this stupid program in C)
+- rm: recursively remove *both* existing hardlinks (and folders) of argument
+- run: run arguments as if you were in the git repo (if outside, defaults to top)
+- unlinked: list files in git dir that don't exist in working dir
 
-the default dot directory and working directory are ~/.dotfiles and ~. they can be changed with the `-g` and `-w` flags. to simplify this, you could use aliases or edit the defaults directly.
+The default dot directory and working directory are ~/.dotfiles and ~. They can be changed with the
+`-g` and `-w` flags. To simplify this, you could use aliases.
 
 ## examples
-normal usage:
+Normal usage:
 ```
 $ dt init
 Initialized empty Git repository in /home/user/.dotfiles/.git/
@@ -105,8 +137,8 @@ No commits yet
 
 Changes to be committed:
   (use "git rm --cached <file>..." to unstage)
-	new file:   .config/alacritty/alacritty.yml
-	new file:   .config/kitty/kitty.conf
+    new file:   .config/alacritty/alacritty.yml
+    new file:   .config/kitty/kitty.conf
 
 $ dt g commit -m "my beloved files"
 $ dt g rm .config/alacritty
@@ -117,43 +149,67 @@ removing '.config/kitty/kitty.conf' and '/home/apoc/.dotfiles/.config/kitty/kitt
 
 $ dt g commit -m "i HATE kitty"
 ```
-adding git files without cluttering your home directory:
+
+Add git files without cluttering your home directory:
 `$ dt g add ~/.dotfiles/README.md`
 
-Also see my ~/.zshrc to add git autocomplete.
+Also see my [.zshrc](/.zshrc) to add git autocomplete.
 
 
+# ffconv
+Ffmpeg wrapper for batch files and slightly faster common cli usage
+
+Dependencies:
+- [name](./name)
+
+## usage
+```
+1: $programName [OPTIONS] SOURCE DEST
+2: $programName [OPTIONS] SOURCE... DIRECTORY
+3: $programName [OPTIONS] SOURCE...
+
+1: Convert SOURCE to DEST with file type given by extension.
+2: Convert SOURCE(s) to DIRECTORY, auto rename files
+3: Convert SOURCE(s) to auto renamed files
+```
+- -h: print help
+- -t EXT: specify filetype by extension, eg. jpg
+- -f: no autonaming; will overwrite files
+- -k: keep extensions as-is
+- -o "ARGS": insert ffmpeg options
 
 # maptoggle.sh
-toggles an X window between mapped and unmapped, ie, visible/invisible (not minimized). Uses xwininfo and xdotool.
+Toggles an X window between mapped and unmapped, ie, visible/invisible (not minimized). Uses xwininfo and xdotool.
 
 ## usage
 `maptoggle.sh [ID | command] [command] [options]`
 
-`ID` identifies a specific window to look for
+`ID` identifies a specific window to look for.
 
 `command` is only used to start the program, and does not need to be included in future runs of this tool, if the window isn't killed.
 
 `-echo` will echo the window id to stdout when mapping the window, for use in scripts to enable persistent floating state or window geometry.
 
 ## examples
-EWMH-compliant window managers (almost all of them) will let you change window geometry after mapping. some properties, like floating/tiling status, are not in the spec, and depend on your specific window manager. for awesomeWM:
+EWMH-compliant window managers (almost all of them) will let you change window geometry after
+mapping. Some properties, like floating/tiling status, are not in the spec, and depend on your
+specific window manager. For awesomeWM:
 ```sh
 winid=$(maptoggle.sh "magic id" $TERMINAL -echo)
 awesome-client "local c = nil ; for _, c2 in ipairs(client.get()) do ; if c2.window == $winid then ; c = c2 ; break ; end ; end ; if not c then return end ; c.floating = true"
 ```
 
-fullscreen:
+Fullscreen:
 ```sh
 winid=$(maptoggle.sh "magic id" $TERMINAL -echo); wmctrl -ir $winid -b add,fullscreen
 ```
 
-place a 50% x 50% sized window in the middle of the screen:
+Place a 50% x 50% sized window in the middle of the screen:
 ```sh
 winid=$(maptoggle.sh "magic id" $TERMINAL -echo); xdotool windowmove $winid 25% 25% ; xdotool windowsize $winid 50% 50%
 ```
 
-awesomewm music player toggle:
+Awesomewm music player toggle:
 ```sh
 wid=$(maptoggle.sh "musically" "$TERMINAL -e ncmpcpp" -echo)
 [ -n $wid ] &&
@@ -164,21 +220,48 @@ unset wid
 ```
 
 
+# memory-sync
+Don't use. Last time i tried rewriting it i ended up wiping most of my firefox config.
 
-# name
-utility for naming files, that i need to rewrite in C
+
+# killer
+Script to kill every process you can as politely (and quickly) as possible.
 
 ## usage
-`name [-d DELIM] FUNCTION [ARG] [FILENAME]...`
--d sets input and output deliminator.
+```
+killer ["nofork"] [OPTION]... [PID]...
+"nofork" prevents forking
+PID will not be killed
+```
 
-functions:
+- -c: send CONT signal after TERM
+- -d: dry run, echos kill commands instead of running them
+- -p: also kill parent process, only applicable with nofork
+- -t TIME: timeout time. default is 15s
+- -u USERS: set users to kill, comma delimited
+- -v: invert users to match
+
+## examples
+`killer` without root will fork, and kill all processes owned by $USER, except login shells.
+'killer -l` will kill login shells after killing everything else.
+`killer` as root kills every process owned by every user (including root) except their login shells.
+`killer nofork` will prevent forking. this can cause the script to kill a distant parent that it needs to survive, like Xorg hosting the terminal that runs `killer`.
+
+
+# name
+Utility for naming files, that i need to rewrite in C
+
+## usage
+```
+name [-d DELIM] FUNCTION [ARG] [FILENAME]...
+-d sets input and output deliminator.
+```
 - rename - renames files based on `image.png, image-1.png, image-2.png` syntax
 - reextend EXT - replace or add new extensions
 - base - return filename with no extension
 - ext - return only extension
 
-arguments can also be piped in:
+Arguments can also be piped in:
 ```
 $ ls
 2021-12-24_21-06.png
@@ -190,11 +273,10 @@ $ ls | name rename
 ```
 
 
-
 # ocrgrab
-small desktop barcode and text grabber
+Desktop barcode and text grabber.
 
-dependencies:
+Dependencies:
 - zbar
 - tesseract (and the lang models you want)
 - hacksaw/slurp
@@ -203,27 +285,22 @@ dependencies:
 crops a section of the screen, notifies if a barcode, text, or nothing was captured, and sends to clipboard.
 
 
-
 # screenshot
-Xorg screenshot script
+Xorg/wayland screenshot script
 
-dependencies:
+Dependencies:
 - shotgun/grim
 - hacksaw/slurp
+- xclip/wl-clip
 - basicrop - optional, for cropping
 
 ## usage
 set `$fotoDir` in the script to a default dir for your screenshots.
-```
-Usage: screenshot [options]
-
-Options:
--o [OUTFILE]    specify an output file
-crop            use crop/window select mode
-temp            send file to /tmp for temporary storage and clipboarding
-file            file-only, don't save image to clipboard
-edit            edit the most recently-taken screenshot
-```
+- -o [OUTFILE]: specify an output file
+- crop: use crop/window select mode
+- temp: send file to /tmp for temporary storage and clipboarding
+- file: file-only, don't save image to clipboard
+- edit: edit the most recently-taken screenshot
 
 ## examples
 crop a screenshot to out.png without copying to clipboard:
@@ -242,16 +319,27 @@ edit:
 `screenshot edit` to save in `$fotoDir`, or `screenshot temp edit` to keep the result in /tmp
 
 
+# timer
+Saves and appends process time in a file.
+
+## usage
+```
+timer FILE COMMAND [ARGS...]
+```
+Where FILE contains the elapsed time of COMMAND.
+
 
 # volume
-volume ctrl util for alsa and pulse/pipewire
+Volume ctrl util for alsa and pulse/pipewire.
 
-dependencies:
+Dependencies:
 - amixer
 - pactl
 
 ## usage
-`volume [a | p] [vol | mute] [Direction Num] [Name] [Card]`
+```
+volume [a | p] {vol | mute} [DIRECTION NUM] NAME CARD
+```
 
 ## examples
 decrease soundcard volume by 5%:
@@ -260,3 +348,36 @@ increase pulseaudio "Global" device volume by 5%:
 `volume p vol + 5 Global`
 toggle mute "Global":
 `volume p mute Global`
+
+
+# vpnapp.sh
+Runs or sets up process namespaces to contain a wireguard VPN as well as full access to LAN. Runs
+sudo internally.
+
+Dependencies:
+- ip (iproute2)
+- ping (iputils)
+- wg (wireguard-tools)
+
+## usage
+```
+vpnapp.sh [OPTIONS] {-p PID | COMMAND [ARGS]}
+```
+- -s PROGRAM: set "sudo" to PROGRAM
+- -w PATH: set VPN with wireguard conf file at PATH
+
+
+# westonscope
+Run a command inside of nested weston in kiosk mode.
+
+Dependencies:
+- xrandr
+- inotify
+- weston
+
+## usage
+```
+westonscope [OPTIONS] COMMAND [ARGS]
+```
+- -f: make weston fullscreen
+- -g WIDTH HEIGHT: set weston geometry

@@ -2,54 +2,60 @@
 config files and scripts i use.
 ![rizz](img/rice1.png)
 
-most of my work is in [.local/bin](.local/bin) with a bunch of shell scripts.
+Most of my work is in [.local/bin](.local/bin) with a bunch of shell scripts, including the
+[script](./local/bin/dt) i use to manage this repo.
 
-most dependencies probably won't be listed, but crazy rare ones will be. a few scripts (and config files) depend on other scripts, so like all dotfiles, skim through the content before copy+pasting.
+Most script dependencies won't be listed, and some scripts/config files depend on other scripts in
+this repo.
+
+These dotfiles are not meant to be "installed," but provide examples for how to do many things on a
+linux desktop.
 
 ## CLI
 
-- kitty terminal
+- neovim with LSP stuff
 
-- neovim, LSP stuff included
+- lf file manager with ctpv previews
 
-- lf TUI file manager with ctpv previews
+- zsh shell with Luke Smith's config (and changes)
 
-- zsh interactive shell in vim mode with starship prompt
-
-- dash for posix scripting
+- dash shell for posix scripting
 
 ## Desktop
 
-- sxhkd keybind daemon, very important
+- awesomewm
 
-- awesomewm with minimal config
+- sxhkd keybind daemon
+
+- kitty terminal
 
 - dunst notifications
 
-### media
+### Media
 
-- pure alsa config available, in process of converting that to pipewire
+- pipewire, with (awesome) pure alsa config available
 
 - mpd and ncmpcpp for music
 
 - feh and nsxiv for images
 
-- mpv
+- mpv for videos
 
-### secrets
+### Secrets
 
-- keepassxc for passwords, document storage, secret service provider, and TOTP
+- keepassxc for passwords, secret service provider, and TOTP
 
-- keepmenu to access keepass database from dmenu, auto unlocked with secret storage
+- keepmenu to access keepass database with dmenu, unlocked with secret storage
 
-- syncthing to sync password vault between devices, among other things
+- syncthing to sync password vault between devices
 
 ## Scripts
-see the [README](.local/bin/).
 
-not everything i write is in there; some of it is disorganized in other non-dot directories and written in C.
+See the outdated [README](.local/bin/).
 
 ## Services
-i use runit as a service manager (and init) for some things. see [here](.local/var/run/runit)
 
-the beauty of runit or anything else that isn't systemd is you don't need the matching init system to run its services, as user or as root. just install runit and start it up [somehow](.zlogin).
+I use runit as a user service manager for some things, see [here.](.local/var/run/runit)
+
+The service manager is started in [.zlogin](.zlogin), and does not require that you have runit as
+your init, only that you have it installed.
