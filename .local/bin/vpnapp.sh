@@ -9,34 +9,51 @@ ip=$(echo "$ipnet" | cut -d/ -f1)
 cidr=$(echo "$ipnet" | cut -d/ -f2)
 
 # runs as sudo!
-setNetwork(){
+setNetwork()(
 	i=0
-	while [ "$(readlink /proc/$$/ns/net)" = "$(readlink "/proc/$2/ns/net")" ]; do
+	fifo1=$1
+	fifo2=$2
+	fifopid=$3
+	pid=$4
+	wireguard=$5
+	exiter(){
+		rm "$fifo1" "$fifo2"
+		kill -s 9 "$fifopid"
+	}
+	trap exiter EXIT
+	trap exit TERM INT
+	while [ "$(readlink /proc/$$/ns/net)" = "$(readlink "/proc/$pid/ns/net")" ]; do
 		[ "$i" -ge 50 ] && echo "namespace checking timeout" && return 1
 		sleep 0.1
 		i=$((i + 1))
 	done
-	[ -d /proc/"$2" ] || return 1
+	[ -d /proc/"$pid" ] || return 1
 	ip l add vpn-ipvlan link "$networkDev" type ipvlan mode l2
-	ip l set vpn-ipvlan netns "$2"
-	nsenter --net=/proc/"$2"/ns/net sh -c '
+	ip l set vpn-ipvlan netns "$pid"
+	nsenter --net=/proc/"$pid"/ns/net sh -c '
 	ip l set lo up
-	ip a add "$1/$2" dev vpn-ipvlan
+	while read -r ip; do
+		msg=$(ip a add "$ip/$1" dev vpn-ipvlan 2>&1) && break ||
+		{
+			echo "$msg" | grep -i -q "error.*assigned" && continue
+			exit 1
+		}
+	done
 	ip l set vpn-ipvlan up
-	' sh "$1" "$cidr"
-	echo netns lan ip: "$1" >&2
-	[ "$3" ] && {
+	echo netns lan ip: "$ip" >&2
+	' sh "$cidr" <"$fifo2" || { echo "epic fail"; exit 2; }
+	[ "$wireguard" ] && {
 		ip l add vpn-tun type wireguard
-		ip l set vpn-tun netns "$2"
-		nsenter --net=/proc/"$2"/ns/net sh -c '
+		ip l set vpn-tun netns "$pid"
+		nsenter --net=/proc/"$pid"/ns/net sh -c '
 		wg setconf vpn-tun "$1"
 		ip a add 10.0.0.1/24 dev vpn-tun
 		ip l set vpn-tun up
 		ip r add default dev vpn-tun
-		' sh "$3"
+		' sh "$wireguard"
 		echo wireguard tunnel ip: 10.0.0.1/24
 	}
-}
+)
 
 [ "$1" = 1 ] && {
 	shift
@@ -89,21 +106,13 @@ ipRecurse(){
 		ipRecurse $(($1 + 1)) "$2.$n"
 	done
 }
-ipList=$(mktemp -u)
-mkfifo "$ipList"
+Fifo1=$(mktemp -u)
+Fifo2=$(mktemp -u)
+mkfifo "$Fifo1" "$Fifo2"
 for n in $(seq "$bot" "$top"); do
 	ipRecurse "$i" "$baseip.$n"
-done > "$ipList" &
+done > "$Fifo1" &
 
-tmpFifo=$(mktemp -u)
-mkfifo "$tmpFifo"
-exiter(){
-	rm "$ipList" "$tmpFifo"
-}
-trap exiter EXIT
-trap exit TERM INT
-
-# ping the range 16 addrs at a time with 1s timeout
 unshare -rmpf --mount-proc --kill-child -- sh -c '
 i=1
 while read -r _ip; do
@@ -111,22 +120,21 @@ while read -r _ip; do
 	[ $i -eq 16 ] && wait && i=1
 	i=$((i + 1))
 done
-' sh <"$ipList" >"$tmpFifo" &
-newIp=$(head -n1 <"$tmpFifo")
-kill -s 9 $!
-[ "$newIp" ] || {
-	echo "no free ip's detected!?!!??!"
-	exit 2
+' sh <"$Fifo1" >"$Fifo2" &
+
+exiter(){
+	rm "$Fifo1" "$Fifo2"
 }
+trap exiter EXIT
+trap exit TERM INT
 
 # now exec stuff
-[ "$nsPid" ] && exec $sudo "$0" 1 "$newIp" "$nsPid" "$wireguard"
+[ "$nsPid" ] && exec $sudo "$0" 1 "$Fifo1" "$Fifo2" "$!" "$nsPid" "$wireguard"
 
 # if pid not specified, run a command
 [ "$#" -le 0 ] && echo "specify -p <pid> or write a command" && exit 1
 
-$sudo "$0" 1 "$newIp" "$$" "$wireguard" &
-exiter
+$sudo "$0" 1 "$Fifo1" "$Fifo2" "$!" "$$" "$wireguard" &
 if [ "$su" ]; then
 	exec unshare -n -- "$@"
 else
