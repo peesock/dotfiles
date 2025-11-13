@@ -16,9 +16,11 @@ setNetwork()(
 	fifopid=$3
 	pid=$4
 	wireguard=$5
+	signal=$6
 	exiter(){
 		rm "$fifo1" "$fifo2"
 		kill -s 9 "$fifopid"
+		[ "$signal" ] && kill -s USR1 "$pid"
 	}
 	trap exiter EXIT
 	trap exit TERM INT
@@ -134,9 +136,10 @@ trap exit TERM INT
 # if pid not specified, run a command
 [ "$#" -le 0 ] && echo "specify -p <pid> or write a command" && exit 1
 
-$sudo "$0" 1 "$Fifo1" "$Fifo2" "$!" "$$" "$wireguard" &
+$sudo "$0" 1 "$Fifo1" "$Fifo2" "$!" "$$" "$wireguard" true &
 if [ "$su" ]; then
-	exec unshare -n -- "$@"
+	unargs=-n
 else
-	exec unshare -cn -- "$@"
+	unargs=-cn
 fi
+exec unshare $unargs -- sh -c 'trap "trap - USR1; exec \"\$@\"" USR1; waitpid $$ & wait' sh "$@"
