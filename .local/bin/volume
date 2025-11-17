@@ -1,9 +1,9 @@
 #!/bin/sh
-set -u
+set -ux
 
 [ $# -lt 2 ] && exit 1
 [ "$1" = 'a' ] && type=alsa
-[ "$1" = 'p' ] && type=pulse
+[ "$1" = 'p' ] && type=pipe
 
 [ "$2" = 'vol' ] && dir=$3 && value=$4 && action=volume && shift 2
 [ "$2" = 'mute' ] && action=mute
@@ -17,35 +17,43 @@ while true; do
 done
 
 [ "$type" = alsa ] && {
-	device=${2-default}
+	deviceId=${2-default}
 	[ "$action" = volume ] && {
-		amixer -qMD "$device" sset "$1" "$value%$dir"
+		amixer -qMD "$deviceId" sset "$1" "$value%$dir"
 		[ "$quiet" ] ||
-				notify-send -r 13 -u low -t 1000 "$1:" "$(amixer -D "$device" sget "$1" | grep -F '%]' | awk -F'[][]' 'NR==1{ print $2 }')" &
+				notify-send -r 13 -u low -t 1000 "$1:" "$(amixer -D "$deviceId" sget "$1" | grep -F '%]' | awk -F'[][]' 'NR==1{ print $2 }')" &
 	}
 
 	[ "$action" = mute ] && {
-		amixer -qD "$device" sset "$1" toggle
+		amixer -qD "$deviceId" sset "$1" toggle
 		[ "$quiet" ] ||
-			notify-send -r 13 -u low -t 1000 "$1:" "$(amixer -D "$device" sget "$1" | grep -qF '[on]' && printf "on" || printf "off")" &
+			notify-send -r 13 -u low -t 1000 "$1:" "$(amixer -D "$deviceId" sget "$1" | grep -qF '[on]' && printf "on" || printf "off")" &
 	}
 }
 
-[ "$type" = pulse ] && {
-	device=${1-"$(pactl get-default-sink)"}
+[ "$type" = pipe ] && {
+	if [ "$1" ]; then
+		deviceId=$(pw-dump Node | jq '.[] | select(.info.props."node.name" == "'"$1"'") | .id')
+		deviceName=$1
+	else
+		deviceName=$(pw-dump | jq '.[] |
+			select(.type == "PipeWire:Interface:Metadata") |
+			select (.props."metadata.name" == "default").metadata.[] |
+			select (.key == "default.audio.sink").value.name' -r)
+		deviceId="@DEFAULT_AUDIO_SINK@"
+	fi
 	[ "$action" = volume ] && {
-		vol=$(pactl get-sink-volume "$device" | awk 'NR==1{print $5+0}')
-		[ "$(echo "$vol $dir $value" | bc)" -ge 100 ] && dir='' value=100
-		pactl set-sink-volume "$device" "$dir$value%"
+		wpctl set-volume -l 1.60 "$deviceId" "$value%$dir"
+		vol=$(wpctl get-volume "$deviceId" | awk '{if ($3) s="% " $3; else s="%"; print ($2 * 100) s}')
 		[ "$quiet" ] ||
-			notify-send -r 13 -u low -t 1000 "$device:" "$([ "$dir" ] && echo "$(echo "$vol $dir $value" | bc)%" || echo "$value%")" &
+			notify-send -r 13 -u low -t 1000 "$deviceName:" "$vol" &
 	}
 
 	[ "$action" = mute ] && {
-			pactl set-sink-mute "$device" toggle
+			wpctl set-mute "$deviceId" toggle
 		[ "$quiet" ] ||
-			notify-send -r 13 -u low -t 1000 "$device:" "$(pactl get-sink-mute "$device" | grep -qF 'no' && printf "on" || printf "off")" &
+			mute=$(wpctl get-volume "$deviceId" | grep -iFq 'muted' && echo off || echo on)
+			notify-send -r 13 -u low -t 1000 "$deviceName:" "$mute" &
 	}
 }
 true
-# note: change printf to echo
