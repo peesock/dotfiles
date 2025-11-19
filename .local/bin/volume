@@ -1,5 +1,4 @@
 #!/bin/sh
-set -ux
 
 [ $# -lt 2 ] && exit 1
 [ "$1" = 'a' ] && type=alsa
@@ -36,8 +35,7 @@ done
 		deviceId=$(pw-dump Node | jq '.[] | select(.info.props."node.name" == "'"$1"'") | .id')
 		deviceName=$1
 	else
-		deviceName=$(pw-dump | jq '.[] |
-			select(.type == "PipeWire:Interface:Metadata") |
+		deviceName=$(pw-dump Metadata | jq '.[] |
 			select (.props."metadata.name" == "default").metadata.[] |
 			select (.key == "default.audio.sink").value.name' -r)
 		deviceId="@DEFAULT_AUDIO_SINK@"
