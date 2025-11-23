@@ -1,0 +1,3 @@
+type = process
+command = sh -c "dinitctl --no-wait --use-passed-cfd shutdown"
+options = pass-cs-fd

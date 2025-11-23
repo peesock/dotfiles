@@ -1,0 +1,2 @@
+type = scripted
+command = touch $XDG_RUNTIME_DIR/.login

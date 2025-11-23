@@ -1,0 +1,6 @@
+# detects when the login manager kicks you out
+type = process
+command = inotifywait -e unmount -e delete_self -- $XDG_RUNTIME_DIR/.login
+chain-to = shutdown
+options = always-chain
+depends-on = login-pre
