@@ -1,0 +1,8 @@
+#!/bin/sh
+
+case $1 in
+	getmissingdeps)
+		pacman -Qi | grep '^Depends' | sed s'/^Depends On\s*: \(.*\)/\1/'| awk '{for (i=1; i<=NF; i++){var=$i; sub(/=.*/, "", var); print var}}' | sort | uniq | grep -v 'None' | pacman -T -
+		;;
+	
+esac
