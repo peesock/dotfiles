@@ -41,7 +41,8 @@ while true; do
 done
 
 sedscript=$(mktemp)
-trap 'rm "$sedscript"; exit' INT TERM
+trap 'rm "$sedscript"' EXIT
+trap 'exit' INT TERM
 
 addpid(){
 	printf '/^%s$/d\n' "$@" >> "$sedscript"
@@ -59,8 +60,7 @@ fi
 
 pidxarger(){
 	addpid $(cut -d' ' -f4 </proc/self/stat) # like $$ but not main process
-	tmp=$(getpids)
-	echo "$tmp" | sed -f "$sedscript" | xargs -d'\n' "$@"
+	getpids | sed -f "$sedscript" | xargs -d'\n' "$@"
 }
 
 # kill as much as possible to reduce process count
@@ -85,7 +85,7 @@ pidxarger ps -o pid= -p >/dev/null 2>&1 && {
 		else
 			pidxarger $kill -s HUP 2>/dev/null # handle TTY logins
 			echo 'kill util not installed with pidfd support. sleeping...'
-			sleep 7 &
+			sleep $((timeout / 1000)) &
 			wait
 		fi
 		
@@ -94,10 +94,13 @@ pidxarger ps -o pid= -p >/dev/null 2>&1 && {
 			echo 'remaining processes:'
 			echo "$list"
 			echo
-			echo 'kill -9ing anything left...'
-			env $kill -s KILL -- -1
+			if [ "$users" ]; then
+				echo "couldn't kill everything by the listed users."
+			else
+				echo 'kill -9ing anything left...'
+				env $kill -s KILL -- -1
+			fi
 		}
 	}
 }
 echo 'done'
-rm "$sedscript"
