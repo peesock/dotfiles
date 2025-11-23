@@ -1,0 +1,3 @@
+type = scripted
+command = sh -c "until mpc -q pause; do sleep 0.1; done"
+start-timeout = 5

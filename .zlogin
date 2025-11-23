@@ -8,12 +8,13 @@
 			echo first login!
 			(
 				if inotifywait -e unmount -e delete_self -- "$XDG_RUNTIME_DIR/.login"; then
-					for s in "$HOME/.local/var/run/runit"/*; do svu x "$s" & done
+					echo last logout!
+					dinitctl -u shutdown
 				else
 					echo "inotify logout fail!"
 				fi
 			) &
-			basename -za "$HOME/.local/var/run/runit"/* | xargs -0 svurun
+			exec dinit -u
 		fi
 	} &
 )

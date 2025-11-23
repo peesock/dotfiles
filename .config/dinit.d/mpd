@@ -1,0 +1,3 @@
+type = internal
+depends-on = mpd.service
+waits-for = mpd-pause

@@ -1,0 +1,2 @@
+type = process
+command = syncthing --logflags 0 --no-browser
