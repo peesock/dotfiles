@@ -1,2 +1,6 @@
-type = internal
+type = process
 waits-for.d = ./boot.d
+command = inotifywait -e unmount -e delete_self -- $XDG_RUNTIME_DIR/.login
+chain-to = shutdown
+options = always-chain
+depends-on = boot-pre
