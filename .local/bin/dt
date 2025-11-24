@@ -82,7 +82,7 @@ link()(
 		fi
 		mkdir -p "${outfile%/*}"
 		echo "linking '$infile' to '$outfile'" >&2
-		cp -rflT $([ ! "$force" ] && [ "$restore" ] && echo '-i') "$infile" "$outfile"
+		cp -PrflT --copy-contents $([ ! "$force" ] && [ "$restore" ] && echo '-i') "$infile" "$outfile"
 	done
 )
 

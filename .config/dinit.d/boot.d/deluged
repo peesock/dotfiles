@@ -1,2 +1,1 @@
-type = process
-command = bwrap.sh -noshare -net -exec --bind-try "printf \"$HOME/%s\0\" download pics/manga vids/tv music .config/deluge" -- deluged -d
+../deluged
