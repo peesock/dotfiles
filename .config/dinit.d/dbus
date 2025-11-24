@@ -1,0 +1,5 @@
+type = process
+command = ./dbus.sh
+ready-notification = pipevar:DINIT_FD
+restart = on-failure
+log-type = buffer

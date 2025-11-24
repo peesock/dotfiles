@@ -1,5 +1,7 @@
 #!/bin/sh
 # vim: ft=sh
+export DBUS_SESSION_BUS_ADDRESS="unix:path=$XDG_RUNTIME_DIR/dbus.sock"
+
 export TERMINAL=kitty
 export BROWSER=firefox.sh
 export SCREENSHOTS="$HOME/pics/screenshots"
