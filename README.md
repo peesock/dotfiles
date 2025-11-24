@@ -55,7 +55,10 @@ See the outdated [README](.local/bin/).
 
 ## Services
 
-I use runit as a user service manager for some things, see [here.](.local/var/run/runit)
+I use dinit as a user service manager for some things, see [here](.config/dinit.d).
 
-The service manager is started in [.zlogin](.zlogin), and does not require that you have runit as
-your init, only that you have it installed.
+The service manager is started on first login as seen in [.zlogin](.zlogin), and removes itself on
+last logout, according to its [boot service](.config/dinit.d/boot). This assumes your login manager
+(usually (e)logind) both creates and removes $XDG_RUNTIME_DIR when needed.
+
+The dinit service manager can be installed separately from dinit init, no need to remove systemd.
