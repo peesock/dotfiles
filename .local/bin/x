@@ -1,2 +1,2 @@
 #!/bin/sh
-exec dbus-run-session startx
+exec dbus-run-session sx
