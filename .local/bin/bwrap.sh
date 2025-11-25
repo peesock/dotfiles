@@ -123,6 +123,7 @@ while true; do
 			[ "$DISPLAY" ] && {
 				display=$(echo "$DISPLAY" | grep -o '[0-9]' | head -n1)
 				appath --ro-bind "/tmp/.X11-unix/X$display"
+				appath --ro-bind-try "${XAUTHORITY:-"$HOME/.Xauthority"}"
 			}
 			[ "$WAYLAND_DISPLAY" ] && {
 				appath --ro-bind "$XDG_RUNTIME_DIR/$WAYLAND_DISPLAY"
