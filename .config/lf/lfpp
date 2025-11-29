@@ -1,5 +1,5 @@
 #!/bin/sh
 # for setting sh functions and variables that i only want in lf.
 
-export PATH="$PATH:$HOME/.config/lf/bin/"
+export PATH="$HOME/.config/lf/bin/:$PATH"
 exec lf "$@"

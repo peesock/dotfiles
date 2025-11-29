@@ -4,5 +4,6 @@ case $1 in
 	getmissingdeps)
 		pacman -Qi | grep '^Depends' | sed s'/^Depends On\s*: \(.*\)/\1/'| awk '{for (i=1; i<=NF; i++){var=$i; sub(/=.*/, "", var); print var}}' | sort | uniq | grep -v 'None' | pacman -T -
 		;;
-	
+	filterfiles) # $2 = package, $3 = mime-type regex
+		pacman -Ql "$2" | cut -d\  -f2- | while read -r file; do [ -f "$file" ] && echo "$file"; done | xargs -d\\n file -00 --mime-type -- 2>/dev/null | awk 'BEGIN{RS="\0"} {if((NR % 2) == 0) {if($NF ~ /'"$3"'/){print var}} else var = $0}'
 esac
