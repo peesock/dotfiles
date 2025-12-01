@@ -1,0 +1,30 @@
+#!/bin/bash
+
+__cmd=$1
+shift
+__var=$(cat "$__cmd"; echo x)
+__var=${__var%x}
+__tmp=$(mktemp)
+trap 'rm "$__tmp"' EXIT
+trap exit INT TERM HUP
+(
+	export PS4
+	PS4='+ $(date +%s%N) '
+	exec 9<> "$__tmp"
+	eval '
+		BASH_XTRACEFD=9
+		set -x
+		'"$__var"'
+	'
+)
+
+<"$__tmp" awk '{
+		currentOne=$1; currentNum=$2; $1=""; $2=""
+		sub(/^\s+/, "")
+		if (NR > 1) {
+			t = ((currentNum - prevNum) / 1000000)
+			sum += t
+			printf("%6.0f: %s\n", t, prevLine);
+		}
+		prevLine = substr(currentOne, 2) " " $0; prevNum = currentNum
+	} END{printf("%6.0f sum\n", sum)}' >&2
