@@ -1,24 +1,30 @@
-#!/bin/bash
+#!/bin/sh
 
-__cmd=$1
+srcfile=$1
 shift
-__var=$(cat "$__cmd"; echo x)
-__var=${__var%x}
-__tmp=$(mktemp)
-trap 'rm "$__tmp"' EXIT
+execfile=$(mktemp)
+outfile=$(mktemp)
+trap 'rm "$outfile" "$execfile"' EXIT
 trap exit INT TERM HUP
-(
-	export PS4
-	PS4='+ $(date +%s%N) '
-	exec 9<> "$__tmp"
-	eval '
-		BASH_XTRACEFD=9
-		set -x
-		'"$__var"'
-	'
-)
 
-<"$__tmp" awk '{
+printf %s "
+	export PS4
+	PS4='+ \$(date +%s%N) '
+	exec 9<> $outfile
+	BASH_XTRACEFD=9
+	set -x
+" > "$execfile"
+
+cat "$srcfile" >> "$execfile"
+
+unshare -cm --keep-caps sh -c '
+	mount -o bind -- "$1" "$2"
+	file=$2
+	shift 2
+	unshare -c bash -- "$file" "$@"
+' sh "$execfile" "$srcfile" "$@"
+
+<"$outfile" awk '{
 		currentOne=$1; currentNum=$2; $1=""; $2=""
 		sub(/^\s+/, "")
 		if (NR > 1) {
