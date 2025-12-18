@@ -49,9 +49,10 @@ done
 
 	[ "$action" = mute ] && {
 			wpctl set-mute "$deviceId" toggle
-		[ "$quiet" ] ||
+		[ "$quiet" ] || {
 			mute=$(wpctl get-volume "$deviceId" | grep -iFq 'muted' && echo off || echo on)
 			notify-send -r 13 -u low -t 1000 "$deviceName:" "$mute" &
+		}
 	}
 }
 true
