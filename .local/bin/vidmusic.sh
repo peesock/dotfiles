@@ -3,6 +3,18 @@ set -x
 input=$(realpath "$1")
 tmp="$(mktemp tmp.XXXXXXX.png)"
 cover=$tmp
+
+exiter(){
+	s=$?
+	[ -e "$tmp" ] && rm "$tmp"
+	if [ "$s" = 0 ]; then
+		notify-send -t 3000 "Done converting" &
+	else
+		notify-send -t 3000 "ERROR converting" &
+	fi
+	exit
+}
+
 [ "$2" ] || {
 	ffmpeg -i "$input" "$tmp" -y
 }
@@ -35,13 +47,23 @@ if [ "$2" ] || ! file --mime-type "$tmp" | cut -d: -f2- | grep -q image/; then
 	if [ -z "$cover" ]; then
 		cover=$HOME/download/assets/speaker-orange.png
 	else
-		magick -- "$cover" -resize '2000>' "$tmp"
+		magick -- "$cover" -quality 1 -resize '800>' "$tmp"
 		cover=$tmp
 	fi
 else
-	magick -- "$tmp" -resize '2000>' "$tmp"
+	magick -- "$tmp" -quality 1 -resize '800>' "$tmp"
 fi
 
-nice ffmpeg -loop 1 -i "${cover}" -i "$input" -vf "crop=trunc(iw/2)*2:trunc(ih/2)*2" -c:v libx264 -r 5 -pix_fmt yuv420p -tune stillimage -crf 30 -c:a aac -b:a 530k -ar 44100 -shortest "$(printf %s "$input" | sed 's/\(.*\)\..*/\1/').mp4"
-[ -e "$tmp" ] && rm "$tmp"
-notify-send -t 3000 "Done converting" &
+out="$(printf %s "$input" | sed 's/\(.*\)\..*/\1/').mp4"
+nice ffmpeg -loop 1 -i "${cover}" -i "$input" \
+	-vf "crop=trunc(iw/2)*2:trunc(ih/2)*2" \
+	-c:v libx264 -pix_fmt yuv420p -tune stillimage -crf 0 -r 1 \
+	-c:a aac -b:a 320k -ar 44100 \
+	-shortest "$out" || exiter
+
+duration=$(ffprobe -i "$input" -show_entries format=duration -v quiet -of csv="p=0") || exiter
+tmpvid=$(mktemp tmp.XXXXXXX.mp4)
+mv "$out" "$tmpvid"
+nice ffmpeg -t "$duration" -i "$tmpvid" -c:v libx264 -pix_fmt yuv420p -tune stillimage -crf 30 -c:a copy "$out"
+rm "$tmpvid"
+exiter
