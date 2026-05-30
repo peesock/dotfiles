@@ -55,15 +55,11 @@ else
 fi
 
 out="$(printf %s "$input" | sed 's/\(.*\)\..*/\1/').mp4"
+duration=$(ffprobe -i "$input" -show_entries format=duration -v quiet -of csv="p=0") || exiter
 nice ffmpeg -loop 1 -i "${cover}" -i "$input" \
 	-vf "crop=trunc(iw/2)*2:trunc(ih/2)*2" \
-	-c:v libx264 -pix_fmt yuv420p -tune stillimage -crf 0 -r 1 \
+	-c:v libx264 -pix_fmt yuv420p -tune stillimage -crf 30 -r 1 \
 	-c:a aac -b:a 320k -ar 44100 \
-	-shortest "$out" || exiter
+	-t "$duration" "$out" || exiter
 
-duration=$(ffprobe -i "$input" -show_entries format=duration -v quiet -of csv="p=0") || exiter
-tmpvid=$(mktemp tmp.XXXXXXX.mp4)
-mv "$out" "$tmpvid"
-nice ffmpeg -t "$duration" -i "$tmpvid" -c:v libx264 -pix_fmt yuv420p -tune stillimage -crf 30 -c:a copy "$out"
-rm "$tmpvid"
 exiter
