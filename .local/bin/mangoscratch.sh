@@ -3,7 +3,6 @@
 # usage: mangoscratch.sh [options] key [command]
 # todo:
 # more states than float and fullscreen
-# make present() clear other intruding states
 
 [ "$MANGO_INSTANCE_SIGNATURE" ] || {
 	echo no mango socket environment variable
@@ -76,6 +75,7 @@ while true; do
 		-s) scale=$2; shift 2;;
 		-f) fullscreen=1; shift;;
 		-k) keep=1; shift;;
+		-g) global=1; shift;;
 		--) shift; break;;
 		*) break;;
 	esac
@@ -89,21 +89,25 @@ daemonPid=$(get daemonpid 1 3)
 present(){
 	id=$1
 	client=$(mmsg get client "$id")
+	# [ false = "$(echo "$client" | jq -r '.is_global')" ] && mmsg dispatch toggleglobal "client,$id" >/dev/null
+
 	if [ "$fullscreen" ]; then
+		[ false = "$(echo "$client" | jq -r '.is_maximized')" ] && mmsg dispatch togglemaximizescreen "client,$id" >/dev/null
 		[ false = "$(echo "$client" | jq -r '.is_fullscreen')" ] && mmsg dispatch togglefullscreen "client,$id" >/dev/null
+		[ false = "$(echo "$client" | jq -r '.is_fakefullscreen')" ] && mmsg dispatch togglefakefullscreen "client,$id" >/dev/null
 	else
 		[ false = "$(echo "$client" | jq -r '.is_floating')" ] && mmsg dispatch togglefloating "client,$id" >/dev/null
-		WH=$(mmsg get monitor "$monitor" | jq -r '"\(.width),\(.height)"')
 		[ "$wh" ] || wh=$(echo "$WH" | awk 'BEGIN{FS=","}{print int($1 * '"$scale"') "," int($2 * '"$scale"')}')
-		xy=$(printf %s\\n%s "$WH" "$wh" |
-			awk 'BEGIN{FS=","}{
-				if (NR==1) {W=$1; H=$2}
-				else
-					print int(W - $1) / 2 "," int(H - $2) / 2
-				}'
-			)
-			mmsg dispatch "movewin,$xy" "client,$id" >/dev/null
+		# xy=$(printf %s\\n%s "$WH" "$wh" |
+		# 	awk 'BEGIN{FS=","}{
+		# 		if (NR==1) {W=$1; H=$2}
+		# 		else
+		# 			print int(W - $1) / 2 "," int(H - $2) / 2
+		# 		}'
+		# 	)
+			# mmsg dispatch "movewin,$xy" "client,$id" >/dev/null
 			mmsg dispatch "resizewin,$wh" "client,$id" >/dev/null
+			mmsg dispatch centerwin "client,$id" >/dev/null
 	fi
 }
 
@@ -140,9 +144,9 @@ getid(){
 }
 
 getinfo(){
-	monitor=$(mmsg get focusing-client | jq -r '.| "\(.monitor)\n\(.tags[0])"')
-	tag=$(echo "$monitor" | tail -n1)
-	monitor=$(echo "$monitor" | head -n1)
+	monitor=$(mmsg get all-monitors | jq -r '.monitors[] | select(.active == true)')
+	tag=$(echo "$monitor" | jq -r '.active_tags[0]')
+	WH=$(echo "$monitor" | jq -r '"\(.width),\(.height)"')
 }
 
 begin(){
@@ -157,16 +161,17 @@ begin(){
 id=$(get "$idKey" 1 2; echo x)
 id=${id%x}
 if [ "$id" ]; then
-	minimized=$(mmsg get client "$id" | jq -r '.is_minimized')
-	if [ "$minimized" = true ]; then
-		mmsg dispatch focusid "client,$id" >/dev/null
+	isVisible=$(mmsg get client "$id" | jq -r '.is_visible')
+	if [ "$isVisible" = false ]; then
+		getinfo
+		mmsg dispatch "tag,$tag" "client,$id" >/dev/null
+		# [ "$global" ] && mmsg dispatch toggleglobal "client,$id" >/dev/null
+		[ "$global" ] && mmsg dispatch toggletag,0 "client,$id" >/dev/null
 		[ "$keep" ] && {
-			getinfo
 			present "$id"
 		}
-		# mmsg dispatch restore_minimized "client,$id" >/dev/null
-	elif [ "$minimized" = false ]; then
-		mmsg dispatch minimized "client,$id" >/dev/null
+	elif [ "$isVisible" = true ]; then
+		mmsg dispatch tagsilent,0 "client,$id"
 	else
 		remove "$idKey"
 		begin "$@"
