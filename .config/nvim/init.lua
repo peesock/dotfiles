@@ -68,6 +68,9 @@ opt.swapfile = false
 opt.undodir = os.getenv("HOME") .. "/.local/share/nvim/undodir"
 opt.undofile = true
 g.nofixendofline = true
+g.rust_recommended_style = false
+g.zig_recommended_style = false
+g.hare_recommended_style = false
 
 -- Vim specific
 opt.hidden = true -- Do not save when switching buffers

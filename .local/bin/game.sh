@@ -40,7 +40,7 @@ if [ "$1" != 1 ]; then
 				shift
 				;;
 			-w)
-				export WINEDEBUG=-all
+				export WINEDEBUG=${WINEDEBUG-"-all"}
 				export WINEPREFIX="$HOME/.wine"
 				wineboot &
 				printf %s\\0 -r "$WINEPREFIX" >>"$args"
