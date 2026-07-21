@@ -41,6 +41,8 @@ remove(){
 }
 
 daemon(){
+	mangopid=$(echo "${MANGO_INSTANCE_SIGNATURE##*/}" | tr -cd 0-9)
+	printf '%s\0\0%s\0\n' daemonpid $$ >"$stateFile"
 	trap 'kill $!; continue' USR1
 	trap 'rm "$stateFile"' EXIT
 	trap exit INT TERM HUP
@@ -82,11 +84,7 @@ idKey=$1
 shift
 
 daemonPid=$(get daemonpid 1 3)
-[ "$daemonPid" ] || {
-	mangopid=$(echo "${MANGO_INSTANCE_SIGNATURE##*/}" | tr -cd 0-9)
-	"$0" -daemon & daemonPid=$!
-	printf '%s\0\0%s\0\n' daemonpid $daemonPid >"$stateFile"
-}
+[ "$daemonPid" ] || "$0" -daemon &
 
 present(){
 	id=$1
@@ -110,13 +108,14 @@ present(){
 }
 
 getid(){
-	fifo=$(mktemp -u)
-	mkfifo "$fifo"
-	trap '[ "$fifo" ] && rm "$fifo"' EXIT
+	fifo1=$(mktemp -u)
+	fifo2=$(mktemp -u)
+	mkfifo "$fifo1" "$fifo2"
+	trap '[ "$fifo1" ] && rm "$fifo1" "$fifo2"' EXIT
 	trap exit INT TERM HUP
-	mmsg watch all-clients | jq --unbuffered -c -r \
-		'.clients | map(select(.tags | any(. == '"$tag"'))) | map(.id)' | stdbuf -oL awk \
-		'BEGIN{FS=","} {
+	mmsg watch all-clients >"$fifo1" & pids=$!
+	<"$fifo1" jq --unbuffered -c -r '.clients | map(select(.tags | any(. == '"$tag"'))) | map(.id)' |
+		stdbuf -oL awk 'BEGIN{FS=","} {
 			gsub(/\[|\]/, "");
 			if (NR == 1) {split($0, arr, ","); print "ready"} else {
 				for (i=1; i<=NF; i++) {
@@ -125,15 +124,15 @@ getid(){
 					if (b==1) {print $i; exit}
 				}
 			}
-		}' >"$fifo" &
-	read _ <"$fifo"
-	(sleep 10; echo timeout fail; kill 0) & pids=$!
+		}' >"$fifo2" &
+	read _ <"$fifo2"
+	(sleep 10; echo timeout fail; kill 0) & pids="$pids $!"
 	"$@" & cmdpid=$!
-	(waitpid $!; echo command fail; kill 0) & pids="$pids $!"
-	read -r id <"$fifo"
+	(trap 'kill $!; exit' TERM; waitpid $! & wait; echo command fail; kill 0) & pids="$pids $!"
+	read -r id <"$fifo2"
 	kill $pids
-	rm "$fifo"
-	unset fifo
+	rm "$fifo1" "$fifo2"
+	unset fifo1
 
 	printf '%s\0%s\0%s\0\n' "$idKey" "$id" "$cmdpid" >>"$stateFile"
 	echo kill -s USR1 "$daemonPid"
