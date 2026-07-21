@@ -1,8 +1,5 @@
 #!/bin/sh
-
 # usage: mangoscratch.sh [options] key [command]
-# todo:
-# more states than float and fullscreen
 
 [ "$MANGO_INSTANCE_SIGNATURE" ] || {
 	echo no mango socket environment variable
@@ -68,12 +65,14 @@ daemon(){
 }
 
 scale=0.5
+wintype=floating
 while true; do
 	case $1 in
 		-daemon) daemon; exit;;
 		-wh) wh=$2; shift 2;;
 		-s) scale=$2; shift 2;;
-		-f) fullscreen=1; shift;;
+		-f) wintype=fullscreen; shift;;
+		-m) wintype=maximized; shift;;
 		-k) keep=1; shift;;
 		-g) global=1; shift;;
 		--) shift; break;;
@@ -86,29 +85,27 @@ shift
 daemonPid=$(get daemonpid 1 3)
 [ "$daemonPid" ] || "$0" -daemon &
 
+untoggler(){
+	[ "$1" = "$(echo "$client" | jq -r ".$2")" ] && mmsg dispatch "$3" "client,$id" >/dev/null
+}
+
 present(){
 	id=$1
 	client=$(mmsg get client "$id")
-	# [ false = "$(echo "$client" | jq -r '.is_global')" ] && mmsg dispatch toggleglobal "client,$id" >/dev/null
-
-	if [ "$fullscreen" ]; then
-		[ false = "$(echo "$client" | jq -r '.is_maximized')" ] && mmsg dispatch togglemaximizescreen "client,$id" >/dev/null
-		[ false = "$(echo "$client" | jq -r '.is_fullscreen')" ] && mmsg dispatch togglefullscreen "client,$id" >/dev/null
-		[ false = "$(echo "$client" | jq -r '.is_fakefullscreen')" ] && mmsg dispatch togglefakefullscreen "client,$id" >/dev/null
-	else
-		[ false = "$(echo "$client" | jq -r '.is_floating')" ] && mmsg dispatch togglefloating "client,$id" >/dev/null
-		[ "$wh" ] || wh=$(echo "$WH" | awk 'BEGIN{FS=","}{print int($1 * '"$scale"') "," int($2 * '"$scale"')}')
-		# xy=$(printf %s\\n%s "$WH" "$wh" |
-		# 	awk 'BEGIN{FS=","}{
-		# 		if (NR==1) {W=$1; H=$2}
-		# 		else
-		# 			print int(W - $1) / 2 "," int(H - $2) / 2
-		# 		}'
-		# 	)
-			# mmsg dispatch "movewin,$xy" "client,$id" >/dev/null
+	case $wintype in
+		floating)
+			untoggler false is_floating togglefloating
+			[ "$wh" ] || wh=$(echo "$WH" | awk 'BEGIN{FS=","}{print int($1 * '"$scale"') "," int($2 * '"$scale"')}')
 			mmsg dispatch "resizewin,$wh" "client,$id" >/dev/null
 			mmsg dispatch centerwin "client,$id" >/dev/null
-	fi
+			;;
+		fullscreen)
+			untoggler false is_fullscreen togglefullscreen
+			;;
+		maximized)
+			untoggler false is_maximized togglemaximizescreen
+			;;
+	esac
 }
 
 getid(){
@@ -139,7 +136,6 @@ getid(){
 	unset fifo1
 
 	printf '%s\0%s\0%s\0\n' "$idKey" "$id" "$cmdpid" >>"$stateFile"
-	echo kill -s USR1 "$daemonPid"
 	kill -s USR1 "$daemonPid"
 }
 
@@ -171,7 +167,7 @@ if [ "$id" ]; then
 			present "$id"
 		}
 	elif [ "$isVisible" = true ]; then
-		mmsg dispatch tagsilent,0 "client,$id"
+		mmsg dispatch tagsilent,0 "client,$id" >/dev/null
 	else
 		remove "$idKey"
 		begin "$@"
