@@ -1,4 +1,4 @@
 type = internal
-depends-on = mpd.service
+prepared-by = mpd.service
 waits-for = mpd-pause
 after = pipewire
