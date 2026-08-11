@@ -158,9 +158,9 @@ begin(){
 	getid "$@"
 	[ "$daemonPid" ] || {
 		daemonPid=$(get daemonpid 1 3)
-		# technically possible race condition if the daemon isn't ready for this
-		kill -s USR1 "$daemonPid"
 	}
+	# technically possible race condition if the daemon isn't ready for this
+	kill -s USR1 "$daemonPid"
 
 	present "$id"
 }
