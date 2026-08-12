@@ -18,20 +18,18 @@ function fish_prompt --description 'Write out the prompt'
 	echo -n (prompt_pwd)
 	set_color --reset
 	if test $CMD_DURATION -gt 0
-		set -l time
+		set -l time "$(math --scale=0 $CMD_DURATION % 1000)ms"
 		echo -n " took "
 		if [ $CMD_DURATION -ge 1000 ]
-			set time "$(math $CMD_DURATION / 1000 % 60)s"
+			set time "$(math --scale=0 $CMD_DURATION / 1000 % 60)s$time"
 			[ $CMD_DURATION -ge 60000 ] && {
 				set time "$(math --scale=0 $CMD_DURATION / 60000 % 60)m$time"
 			}
 			[ $CMD_DURATION -ge 3600000 ] && {
 				set time "$(math --scale=0 $CMD_DURATION / 3600000)h$time"
 			}
-		else
-			set time $CMD_DURATION"ms"
 		end
-		set_color --bold yellow
+		set_color --bold bryellow
 		echo -n $time
 		set_color --reset
 	end
