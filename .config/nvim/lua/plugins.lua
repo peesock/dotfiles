@@ -26,10 +26,13 @@ vim.pack.add({
 	{ src = 'https://github.com/folke/which-key.nvim', },
 	{ src = 'https://github.com/tpope/vim-commentary', },
 	{ src = 'https://github.com/olimorris/onedarkpro.nvim', },
-	{ src = 'https://github.com/echasnovski/mini.indentscope', },
-	{ src = 'https://github.com/echasnovski/mini.move', },
+	{ src = 'https://github.com/nvim-mini/mini.indentscope', },
+	{ src = 'https://github.com/nvim-mini/mini.move', },
 	{ src = 'https://github.com/j-hui/fidget.nvim', },
+	{ src = 'https://github.com/lewis6991/async.nvim', },
 })
+
+async = require('async')
 
 require('lsp')
 

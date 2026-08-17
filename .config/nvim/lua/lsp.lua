@@ -104,14 +104,14 @@ end, "Toggle signs")
 local ts = require('nvim-treesitter')
 local available = {}
 local installed = {}
-for k, v in ipairs(ts.get_installed()) do
+for _, v in ipairs(ts.get_installed()) do
 	installed[v] = 1
 end
-for k, v in ipairs(ts.get_available()) do
+for _, v in ipairs(ts.get_available()) do
 	available[v] = 1
 end
 
-local ensureInstalled = { 'lua', 'vim', 'vimdoc', 'query' }
+local ensureInstalled = { 'lua', 'vim', 'vimdoc', 'query', 'markdown' }
 local parsersToInstall = vim.iter(ensureInstalled)
 	:filter(function(parser)
 		return not installed[parser]
@@ -119,13 +119,30 @@ local parsersToInstall = vim.iter(ensureInstalled)
 	:totable()
 ts.install(parsersToInstall)
 
-vim.api.nvim_create_autocmd({'FileType',}, {
+local ts_runner = (function()
+	if available[vim.bo.filetype] == nil then return end
+	-- Enable treesitter highlighting
+	if not installed[vim.bo.filetype] then
+		local _, ok, result = async.pawait(ts.install(vim.bo.filetype))
+		if not ok or not result then
+			vim.notify("Error fetching TS parser:\n" .. result)
+			-- os.execute('notify-send HUH?')
+			return
+		end
+	end
+	local ok, result = pcall(vim.treesitter.start)
+	if not ok then
+		vim.notify("Error starting TS parser:\n" .. result)
+		-- os.execute('notify-send WHAT?')
+		vim.treesitter.stop()
+		return
+	end
+	-- Enable treesitter-based indentation
+	vim.bo.indentexpr = "v:lua.require'nvim-treesitter'.indentexpr()"
+end)
+
+vim.api.nvim_create_autocmd({'FileType', }, {
 	callback = function()
-		if available[vim.bo.filetype] == nil then return end
-		-- Enable treesitter highlighting and disable regex syntax
-		if not installed[vim.bo.filetype] then ts.install(vim.bo.filetype):wait() end
-		pcall(vim.treesitter.start)
-		-- Enable treesitter-based indentation
-		vim.bo.indentexpr = "v:lua.require'nvim-treesitter'.indentexpr()"
+		async.run(ts_runner):detach()
 	end,
 })
